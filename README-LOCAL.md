@@ -103,11 +103,12 @@ systemctl --user enable hyprwhspr              # optional: autostart at login
 journalctl --user -u hyprwhspr -f              # live log (incl. [PIPELINE] lines)
 ```
 
-**Launcher app**: "Dictation" in the KDE app launcher
-(`~/.local/share/applications/dictation-toggle.desktop` →
-`utils/dictation-toggle`) — click toggles the service and pops a
-notification with the new state. Pin it to the taskbar for one-click
-start/stop, or bind a KDE global shortcut to the script.
+**Launcher app**: "**Glas**" (глас — Bulgarian for *voice*) in the KDE app
+launcher (`~/.local/share/applications/glas.desktop` → `utils/glas-toggle`,
+icon `share/assets/glas.svg` installed to
+`~/.local/share/icons/hicolor/scalable/apps/`) — click toggles the service
+and pops a notification with the new state. Pin it to the taskbar for
+one-click start/stop, or bind a KDE global shortcut to the script.
 
 ## Usage
 

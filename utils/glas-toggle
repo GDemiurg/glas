@@ -7,11 +7,11 @@ UNIT=hyprwhspr.service
 
 if systemctl --user is-active --quiet "$UNIT"; then
     systemctl --user stop "$UNIT"
-    notify-send -a Dictation -i microphone-sensitivity-muted \
-        "Dictation stopped" "F9 no longer records."
+    notify-send -a Glas -i microphone-sensitivity-muted \
+        "Glas stopped" "F9 no longer records."
 else
     systemctl --user start "$UNIT"
     # READY takes a few seconds (model load); tell the truth about it
-    notify-send -a Dictation -i audio-input-microphone \
-        "Dictation starting…" "Hold F9 to talk once the model loads (~5 s)."
+    notify-send -a Glas -i audio-input-microphone \
+        "Glas starting…" "Hold F9 to talk once the model loads (~5 s)."
 fi
