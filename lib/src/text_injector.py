@@ -698,6 +698,11 @@ except Exception:
             if result.returncode != 0:
                 stderr = (result.stderr or b'').decode('utf-8', 'ignore')
                 print(f"  wtype paste failed: {stderr}")
+                if 'does not support the virtual keyboard protocol' in stderr:
+                    # Compositor-level rejection (e.g. KWin): permanent for this
+                    # session, so stop paying a failed wtype spawn on every paste.
+                    self.wtype_available = False
+                    print("  wtype disabled for this session; using ydotool")
                 return False
             return True
         except Exception as e:

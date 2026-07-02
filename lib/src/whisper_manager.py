@@ -665,8 +665,11 @@ class WhisperManager:
                     return False
 
                 strategy_int = 1 if self.config.get_setting('sampling_strategy', 'beam_search') == 'beam_search' else 0
+                # Pass the resolved file path, not the model name: pywhispercpp
+                # only recognizes stock ggml names and rejects custom models
+                # (e.g. distil-large-v3) even when the file is already on disk.
                 self._pywhisper_model = Model(
-                    model=self.current_model,
+                    model=str(model_file),
                     n_threads=self.config.get_setting('threads', 4),
                     params_sampling_strategy=strategy_int,
                     redirect_whispercpp_logs_to=None
@@ -2048,8 +2051,11 @@ class WhisperManager:
                     # Fallback for flat layout (or older versions)
                     from pywhispercpp import Model
                 strategy_int = 1 if self.config.get_setting('sampling_strategy', 'beam_search') == 'beam_search' else 0
+                from pathlib import Path
+                _model_file = (Path.home() / '.local' / 'share' / 'pywhispercpp'
+                               / 'models' / f'ggml-{self.current_model}.bin')
                 self._pywhisper_model = Model(
-                    model=self.current_model,
+                    model=str(_model_file) if _model_file.exists() else self.current_model,
                     n_threads=int(num_threads),
                     params_sampling_strategy=strategy_int,
                     redirect_whispercpp_logs_to=None
