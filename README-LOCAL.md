@@ -93,14 +93,21 @@ ollama pull gemma3:4b
 
 ## Run
 
-```fish
-set -Ux HYPRWHSPR_ROOT ~/Projects/hyprwhspr   # once
-~/Projects/hyprwhspr/.venv/bin/python ~/Projects/hyprwhspr/lib/main.py
+Installed as a systemd user service (`~/.config/systemd/user/hyprwhspr.service`,
+adapted from `config/systemd/hyprwhspr.service` — venv python, repo paths,
+`SuccessExitStatus=143`):
+
+```bash
+systemctl --user start|stop|status hyprwhspr   # manual control
+systemctl --user enable hyprwhspr              # optional: autostart at login
+journalctl --user -u hyprwhspr -f              # live log (incl. [PIPELINE] lines)
 ```
 
-Or as a systemd user service — see `config/systemd/hyprwhspr.service`
-(point `ExecStart` at the venv python + `lib/main.py`, set
-`Environment=HYPRWHSPR_ROOT=%h/Projects/hyprwhspr`).
+**Launcher app**: "Dictation" in the KDE app launcher
+(`~/.local/share/applications/dictation-toggle.desktop` →
+`utils/dictation-toggle`) — click toggles the service and pops a
+notification with the new state. Pin it to the taskbar for one-click
+start/stop, or bind a KDE global shortcut to the script.
 
 ## Usage
 
