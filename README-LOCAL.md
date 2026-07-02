@@ -17,13 +17,41 @@ including KWin (KDE Plasma).
   non-rewriting; any failure (Ollama down, timeout, suspicious output) falls
   back to the raw transcript. Multi-line dictations are cleaned per line in
   parallel so `"new line"` voice commands survive.
+- **Custom-model fix** (`whisper_manager.py`): pywhispercpp is given the
+  resolved model *file path* instead of the model name, so non-stock models
+  (distil-large-v3) load instead of erroring.
+- **KWin paste fix** (`text_injector.py`): when the compositor rejects
+  wtype's virtual-keyboard protocol (KWin does), wtype is disabled for the
+  session instead of failing before every single paste.
+
+## KDE Plasma gotchas (learned the hard way)
+
+- **wtype does not work under KWin** — no `zwp_virtual_keyboard_v1`. All
+  paste chords go through ydotool (uinput). Keep both installed; wtype just
+  self-disables.
+- **`grab_keys: true` is broken here** — the exclusive-grab + uinput re-emit
+  path dropped keystrokes and made the keyboard unusable. Leave it `false`.
+- **Use a non-typing hotkey.** Nothing swallows the key on KDE (no compositor
+  bind like Hyprland), so a letter combo (`SUPER+ALT+D`) key-repeats into the
+  focused app while held. `F9` types nothing — clean hold-to-talk.
 
 ## Machine-specific facts (this install)
 
 - GPU: RTX 3060 Ti → pywhispercpp built from source with CUDA
   (`GGML_CUDA=1`, host compiler `g++-15`, nvcc from `/opt/cuda`).
+  **Post-build fix required**: the build vendors `libcuda` into
+  `site-packages/pywhispercpp.libs/`, which breaks CUDA init. Replace it with
+  a symlink to the system driver library:
+  ```bash
+  cd .venv/lib/python3.14/site-packages/pywhispercpp.libs/
+  mv libcuda-*.so.* vendored.bak && ln -s /usr/lib/libcuda.so.1 <original-libcuda-filename>
+  ```
+  (symlink to `libcuda.so.1` survives driver updates)
 - Python 3.14 → no prebuilt wheels; everything lives in `.venv/`.
-- Mic: Focusrite Scarlett Solo (PipeWire default source).
+- Mic: **Trust GXT 232** (`audio_device_name: "Trust"`, source volume 150%).
+  The Scarlett Solo input carries no signal on this desk; the Redragon
+  camera mic clips.
+- Hotkey: **F9** hold-to-talk (see KDE gotchas above).
 - Models on disk: `~/.local/share/pywhispercpp/models/`
   (`ggml-distil-large-v3.bin` — fast, **English only**; `ggml-small.bin` —
   multilingual, use for Bulgarian).
@@ -76,10 +104,10 @@ Or as a systemd user service — see `config/systemd/hyprwhspr.service`
 
 ## Usage
 
-Hold **Super+Alt+D**, speak, release. Text appears at the cursor
-(clipboard-paste injection: `wl-copy` + `wtype` paste chord, `ydotool`
-fallback — survives Electron apps and terminals; terminals get
-Ctrl+Shift+V automatically).
+Hold **F9**, speak, release. Text appears at the cursor
+(clipboard-paste injection: `wl-copy` + paste chord via `ydotool` on KDE —
+survives Electron apps and terminals; terminals get Ctrl+Shift+V
+automatically).
 
 Voice commands (built-in, `symbol_replacements: true`): "new line", "period",
 "comma", "question mark", "open paren", "tab", … full list in
@@ -90,12 +118,14 @@ Voice commands (built-in, `symbol_replacements: true`): "new line", "period",
 ```json
 {
   "recording_mode": "push_to_talk",
-  "primary_shortcut": "SUPER+ALT+D",
+  "primary_shortcut": "F9",
   "model": "distil-large-v3",
   "language": "en",
   "llm_cleanup": true,
   "llm_cleanup_model": "gemma3:4b",
-  "audio_feedback": true
+  "audio_feedback": true,
+  "grab_keys": false,
+  "audio_device_name": "Trust"
 }
 ```
 
