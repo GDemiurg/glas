@@ -87,6 +87,16 @@ class ConfigManager:
             # Empty stdout leaves text unchanged (observer-only hooks).
             # Null disables the hook.
             'post_transcription_hook': None,
+            # LLM transcript cleanup via local Ollama (punctuation,
+            # capitalization, filler removal — never rephrases). Runs after
+            # preprocessing, before post_transcription_hook. Any failure
+            # falls back to the raw transcript.
+            'llm_cleanup': False,
+            'llm_cleanup_model': 'gemma3:4b',
+            'llm_cleanup_url': 'http://localhost:11434',
+            'llm_cleanup_timeout': 8.0,   # seconds; on timeout raw text is used
+            'llm_cleanup_keep_alive': '30m',  # keep model hot in Ollama between dictations
+            'llm_cleanup_prompt': None,   # null = built-in instruction (see llm_cleanup.py)
             'clipboard_behavior': False,  # Boolean: true = clear clipboard after delay, false = keep (current behavior)
             'clipboard_clear_delay': 5.0,  # Float: seconds to wait before clearing clipboard (only used if clipboard_behavior is true)
             # Values: "super" | "ctrl_shift" | "ctrl" | null (auto-detect)

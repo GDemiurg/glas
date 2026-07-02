@@ -24,6 +24,11 @@ try:
 except ImportError:
     from ydotoold_session import YdotooldSession
 
+try:
+    from .llm_cleanup import LLMCleanup
+except ImportError:
+    from llm_cleanup import LLMCleanup
+
 pyperclip = require_package('pyperclip')
 
 DEFAULT_PASTE_KEYCODE = 47  # Linux evdev KEY_V on QWERTY
@@ -155,6 +160,11 @@ class TextInjector:
         # ydotool.service: hyprwhspr owns this daemon on its own socket.
         self._ydotoold = YdotooldSession()
         self._atspi_unavailable = False
+
+        # Optional Ollama cleanup stage (llm_cleanup: true in config);
+        # preload the model so the first dictation isn't hit by cold load.
+        self.llm_cleanup = LLMCleanup(config_manager)
+        self.llm_cleanup.warm()
 
         if not self.ydotool_available and not self.wtype_available:
             print("⚠️  No injection backend found (wtype or ydotool). hyprwhspr requires wtype or ydotool for paste injection.")
@@ -953,6 +963,7 @@ except Exception:
 
         # Preprocess; also trim trailing newlines (avoid unwanted Enter)
         processed_text = self._preprocess_text(text).rstrip("\r\n")
+        processed_text = self.llm_cleanup.cleanup(processed_text)
         processed_text = self._run_post_transcription_hook(processed_text) + ' '
 
         try:

@@ -16,23 +16,38 @@
       "description": "Primary keyboard shortcut to trigger recording (e.g., 'SUPER+ALT+D')"
     },
     "secondary_shortcut": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "default": null,
       "description": "Optional secondary hotkey for language-specific recording (e.g., 'SUPER+ALT+I')"
     },
     "secondary_language": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "default": null,
       "description": "Language code for secondary shortcut (e.g., 'it', 'en', 'fr')"
     },
     "cancel_shortcut": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "default": null,
       "description": "Optional shortcut to cancel recording and discard audio without transcribing (e.g., 'SUPER+ESCAPE')"
     },
     "recording_mode": {
       "type": "string",
-      "enum": ["toggle", "push_to_talk", "auto", "continuous", "long_form"],
+      "enum": [
+        "toggle",
+        "push_to_talk",
+        "auto",
+        "continuous",
+        "long_form"
+      ],
       "default": "toggle",
       "description": "Recording mode: 'toggle' (press to start/stop), 'push_to_talk' (hold to record), 'auto' (hybrid tap/hold), 'continuous' (keeps transcribing, auto-pastes on speech pause), 'long_form' (extended recording with pause/resume; requires long_form_submit_shortcut)"
     },
@@ -47,12 +62,18 @@
       "description": "Use Hyprland compositor bindings instead of evdev (disables GlobalShortcuts)"
     },
     "selected_device_path": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "default": null,
       "description": "Specific keyboard device path (e.g., '/dev/input/event3')"
     },
     "selected_device_name": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "default": null,
       "description": "Specific keyboard device name (e.g., 'USB Keyboard'). Takes priority over path if both set."
     },
@@ -62,23 +83,38 @@
       "description": "Watch for keyboards plugged in after startup (pyudev) and attach them live, so docked/Bluetooth/USB keyboards work without restarting the service. True (default) enables this for any keyboard that passes the same checks as startup discovery (must emit every shortcut key). Set false to restore startup-only discovery."
     },
     "keyboard_device_names": {
-      "type": ["array", "null"],
-      "items": { "type": "string" },
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "string"
+      },
       "default": null,
       "description": "Optional allowlist of keyboard device names. When set, only listed devices are grabbed at startup AND on hotplug. Ignored if selected_device_name or selected_device_path is set. Null (default) = no name filter."
     },
     "audio_device_id": {
-      "type": ["integer", "string", "null"],
+      "type": [
+        "integer",
+        "string",
+        "null"
+      ],
       "default": null,
       "description": "PortAudio device index, or a PulseAudio/PipeWire source name (from `pactl list short sources`). The index can change on reboot; the source name is matched against PortAudio devices."
     },
     "audio_device_name": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "default": null,
       "description": "PortAudio/PulseAudio device-name substring (more stable across reboots). A PulseAudio/PipeWire source name is also accepted."
     },
     "audio_device_vendor_id": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "default": null,
       "description": "USB vendor ID for audio device (most stable identifier, from udev)"
     },
@@ -88,7 +124,10 @@
       "description": "Hold a silent input stream open between recordings so the mic stays warm (fixes 'paTimedOut' on some USB mics). Off by default; when on, desktops show the mic-in-use indicator continuously."
     },
     "audio_device_model_id": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "default": null,
       "description": "USB model ID for audio device (most stable identifier, from udev)"
     },
@@ -103,7 +142,10 @@
       "description": "Thread count for whisper processing; omit for auto = min(8, CPU count)"
     },
     "language": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "default": null,
       "description": "Language code for transcription (null = auto-detect, or 'en', 'nl', 'fr', etc.)"
     },
@@ -112,7 +154,9 @@
       "additionalProperties": {
         "type": "string"
       },
-      "default": {"hyper whisper": "hyprwhspr"},
+      "default": {
+        "hyper whisper": "hyprwhspr"
+      },
       "description": "Dictionary of word replacements applied after transcription: {\"original\": \"replacement\"}"
     },
     "filter_filler_words": {
@@ -125,7 +169,17 @@
       "items": {
         "type": "string"
       },
-      "default": ["uh", "um", "er", "ah", "eh", "hmm", "hm", "mm", "mhm"],
+      "default": [
+        "uh",
+        "um",
+        "er",
+        "ah",
+        "eh",
+        "hmm",
+        "hm",
+        "mm",
+        "mhm"
+      ],
       "description": "Filler words to remove when filter_filler_words is enabled"
     },
     "symbol_replacements": {
@@ -140,13 +194,19 @@
     },
     "task": {
       "type": "string",
-      "enum": ["transcribe", "translate"],
+      "enum": [
+        "transcribe",
+        "translate"
+      ],
       "default": "transcribe",
       "description": "'transcribe' outputs the source language; 'translate' translates speech into English. Supported by pywhispercpp and faster-whisper."
     },
     "sampling_strategy": {
       "type": "string",
-      "enum": ["beam_search", "greedy"],
+      "enum": [
+        "beam_search",
+        "greedy"
+      ],
       "default": "beam_search",
       "description": "Whisper decoding strategy (pywhispercpp, faster-whisper). 'beam_search' tracks multiple candidates for better accuracy; 'greedy' is faster but lower quality. Locked at model load for pywhispercpp (restart to change)."
     },
@@ -157,9 +217,46 @@
       "description": "Number of candidate sequences tracked during beam search (beam_search only). Higher is more accurate but slower."
     },
     "post_transcription_hook": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "default": null,
       "description": "Shell command run after preprocessing, before paste. Stdin receives the transcription; non-empty stdout replaces it. Empty stdout = observer-only (original text is kept). Env vars HYPRWHSPR_MODEL and HYPRWHSPR_BACKEND are set. Subject to a 5s timeout; errors pass through the original text."
+    },
+    "llm_cleanup": {
+      "type": "boolean",
+      "default": false,
+      "description": "Enable LLM transcript cleanup via a local Ollama server (punctuation, capitalization, filler removal — never rephrases). Runs after preprocessing, before post_transcription_hook. Any failure falls back to the raw transcript."
+    },
+    "llm_cleanup_model": {
+      "type": "string",
+      "default": "gemma3:4b",
+      "description": "Ollama model used for cleanup (e.g. gemma3:4b, qwen2.5:3b)"
+    },
+    "llm_cleanup_url": {
+      "type": "string",
+      "default": "http://localhost:11434",
+      "description": "Base URL of the Ollama server"
+    },
+    "llm_cleanup_timeout": {
+      "type": "number",
+      "minimum": 0,
+      "default": 8.0,
+      "description": "Seconds to wait for cleanup before falling back to the raw transcript"
+    },
+    "llm_cleanup_keep_alive": {
+      "type": "string",
+      "default": "30m",
+      "description": "Ollama keep_alive — how long the cleanup model stays loaded between dictations"
+    },
+    "llm_cleanup_prompt": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null,
+      "description": "Custom cleanup instruction; null uses the built-in prompt (fix formatting, never rewrite meaning)"
     },
     "clipboard_behavior": {
       "type": "boolean",
@@ -174,12 +271,20 @@
     },
     "paste_mode": {
       "type": "string",
-      "enum": ["super", "ctrl_shift", "ctrl", "alt"],
+      "enum": [
+        "super",
+        "ctrl_shift",
+        "ctrl",
+        "alt"
+      ],
       "default": "ctrl_shift",
       "description": "Paste key combination: 'ctrl_shift' (Ctrl+Shift+V), 'super' (Super+V), 'ctrl' (Ctrl+V), 'alt' (Alt+V)"
     },
     "paste_keycode_wev": {
-      "type": ["integer", "null"],
+      "type": [
+        "integer",
+        "null"
+      ],
       "default": null,
       "description": "Wayland/XKB keycode as printed by wev for the key that types 'v'. Converted to Linux evdev by subtracting 8."
     },
@@ -223,22 +328,42 @@
     },
     "transcription_backend": {
       "type": "string",
-      "enum": ["pywhispercpp", "cpu", "nvidia", "vulkan", "amd", "rest-api", "realtime-ws", "onnx-asr", "faster-whisper", "cohere-transcribe"],
+      "enum": [
+        "pywhispercpp",
+        "cpu",
+        "nvidia",
+        "vulkan",
+        "amd",
+        "rest-api",
+        "realtime-ws",
+        "onnx-asr",
+        "faster-whisper",
+        "cohere-transcribe"
+      ],
       "default": "pywhispercpp",
       "description": "Transcription backend to use"
     },
     "rest_endpoint_url": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "default": null,
       "description": "Full HTTP or HTTPS URL for remote transcription endpoint"
     },
     "rest_api_provider": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "default": null,
       "description": "Provider identifier for credential lookup (e.g., 'openai', 'groq', 'custom')"
     },
     "rest_api_key": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "default": null,
       "description": "DEPRECATED: API key for authentication. Use credential manager instead."
     },
@@ -267,17 +392,26 @@
       "description": "Audio format for remote transcription (e.g., 'wav', 'mp3')"
     },
     "websocket_provider": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "default": null,
       "description": "Provider identifier for WebSocket credential lookup (e.g., 'openai', 'google', 'elevenlabs')"
     },
     "websocket_model": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "default": null,
       "description": "Model identifier for WebSocket backend (e.g., 'gpt-realtime-whisper', 'gemini-3.1-flash-live-preview')"
     },
     "websocket_url": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "default": null,
       "description": "Explicit WebSocket URL (auto-derived from provider if null)"
     },
@@ -295,13 +429,22 @@
     },
     "realtime_mode": {
       "type": "string",
-      "enum": ["transcribe", "converse"],
+      "enum": [
+        "transcribe",
+        "converse"
+      ],
       "default": "transcribe",
       "description": "'transcribe' for speech-to-text, 'converse' for voice-to-AI"
     },
     "realtime_transcription_delay": {
       "type": "string",
-      "enum": ["minimal", "low", "medium", "high", "xhigh"],
+      "enum": [
+        "minimal",
+        "low",
+        "medium",
+        "high",
+        "xhigh"
+      ],
       "default": "low",
       "description": "Latency/accuracy delay setting for OpenAI gpt-realtime-whisper transcription"
     },
@@ -311,8 +454,14 @@
       "description": "ONNX ASR model name (CPU-optimized)"
     },
     "onnx_asr_quantization": {
-      "type": ["string", "null"],
-      "enum": ["int8", null],
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "int8",
+        null
+      ],
       "default": "int8",
       "description": "Quantization mode for ONNX ASR. 'int8' for CPU performance, null for fp32."
     },
@@ -334,13 +483,23 @@
     },
     "faster_whisper_device": {
       "type": "string",
-      "enum": ["auto", "cuda", "cpu"],
+      "enum": [
+        "auto",
+        "cuda",
+        "cpu"
+      ],
       "default": "auto",
       "description": "'auto' detects CUDA; falls back to CPU. Set explicitly if needed."
     },
     "faster_whisper_compute_type": {
       "type": "string",
-      "enum": ["auto", "int8", "float16", "int8_float16", "float32"],
+      "enum": [
+        "auto",
+        "int8",
+        "float16",
+        "int8_float16",
+        "float32"
+      ],
       "default": "auto",
       "description": "'auto' uses int8 on CUDA, float32 on CPU. Set to 'int8' explicitly on CPU for faster inference at some accuracy cost."
     },
@@ -351,13 +510,21 @@
     },
     "cohere_transcribe_device": {
       "type": "string",
-      "enum": ["auto", "cuda", "cpu"],
+      "enum": [
+        "auto",
+        "cuda",
+        "cpu"
+      ],
       "default": "auto",
       "description": "Device for the Cohere Transcribe backend. 'auto' detects CUDA and falls back to CPU."
     },
     "cohere_transcribe_dtype": {
       "type": "string",
-      "enum": ["float16", "bfloat16", "float32"],
+      "enum": [
+        "float16",
+        "bfloat16",
+        "float32"
+      ],
       "default": "bfloat16",
       "description": "Compute dtype for Cohere Transcribe. GPU runs bfloat16 (the model's native precision); true float16 is not usable as it overflows the attention mask, so a 'float16' setting is treated as bfloat16. 'float32' forces full precision and is used on CPU."
     },
@@ -400,17 +567,26 @@
       "description": "Volume multiplier for error sound"
     },
     "start_sound_path": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "default": null,
       "description": "Custom path for start sound (null = built-in ping-up.ogg)"
     },
     "stop_sound_path": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "default": null,
       "description": "Custom path for stop sound (null = built-in ping-down.ogg)"
     },
     "error_sound_path": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "default": null,
       "description": "Custom path for error sound (null = built-in ping-error.ogg)"
     },
@@ -448,7 +624,10 @@
       "description": "Send Enter key after pasting text (for chat/search inputs)"
     },
     "long_form_submit_shortcut": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "default": null,
       "description": "Shortcut to submit long-form recording (e.g., 'Super+Return')"
     },
