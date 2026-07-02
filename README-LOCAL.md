@@ -137,7 +137,7 @@ Voice commands (built-in, `symbol_replacements: true`): "new line", "period",
 | `llm_cleanup_prompt` | override the built-in instruction (default: fix formatting, never rewrite) |
 | `model` | whisper model name → `~/.local/share/pywhispercpp/models/ggml-<name>.bin` |
 | `whisper_prompt` | custom vocabulary / spelling hints fed to whisper.cpp as initial prompt |
-| `word_overrides` | post-hoc regex word replacements, e.g. `{"demiurg": "Demiurg"}` |
+| `word_overrides` | post-hoc word replacements — applied **before and after** LLM cleanup, so they catch both raw mishears and cleanup-normalized forms. E.g. whisper hears "demiurg dot dev" as `demyorg.dev.dev` → gemma respells to `demiurg.dev.dev` → override collapses to `demiurg.dev` |
 
 ### Swapping models
 

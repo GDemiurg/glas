@@ -967,9 +967,17 @@ except Exception:
             return True
 
         # Preprocess; also trim trailing newlines (avoid unwanted Enter)
+        print(f"[PIPELINE] raw transcript: {text!r}", flush=True)
         processed_text = self._preprocess_text(text).rstrip("\r\n")
-        processed_text = self.llm_cleanup.cleanup(processed_text)
-        processed_text = self._run_post_transcription_hook(processed_text) + ' '
+        print(f"[PIPELINE] preprocessed:   {processed_text!r}", flush=True)
+        cleaned_text = self.llm_cleanup.cleanup(processed_text)
+        if cleaned_text != processed_text:
+            # Re-apply word overrides: cleanup can normalize a mishearing into
+            # exactly the form an override targets (e.g. 'demyorg.dev.dev' →
+            # 'demiurg.dev.dev'), which the pre-cleanup pass couldn't match.
+            cleaned_text = self._apply_word_overrides(cleaned_text)
+            print(f"[PIPELINE] llm cleaned:    {cleaned_text!r}", flush=True)
+        processed_text = self._run_post_transcription_hook(cleaned_text) + ' '
 
         try:
             inject_mode = None
