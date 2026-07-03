@@ -195,6 +195,12 @@ class MicOSD:
             return
 
         self.visible = True
+        # Cancel a pending collapse-hide and re-arm the wave for this show
+        if getattr(self, '_collapse_timer_id', None):
+            GLib.source_remove(self._collapse_timer_id)
+            self._collapse_timer_id = None
+        if hasattr(self.visualization, 'reset'):
+            self.visualization.reset()
         self.window.set_visible(True)
         # Re-assert input transparency — the Wayland surface may have been
         # recreated since the last show, and a clickable overlay would
@@ -229,9 +235,33 @@ class MicOSD:
         self._auto_hide_timeout_id = GLib.timeout_add_seconds(30, self._auto_hide_callback)
     
     def _hide(self):
-        """Hide the OSD and stop audio monitoring."""
+        """Hide the OSD and stop audio monitoring.
+
+        With a collapse-capable visualization the wave first sinks into the
+        baseline (~160ms) and the window hides after — still reads as
+        instant, less abrupt than a frame-one vanish.
+        """
         self._clear_preview_file()
 
+        if not self.visible:
+            return
+
+        if (self.window and hasattr(self.visualization, 'begin_collapse')
+                and not getattr(self, '_collapse_timer_id', None)):
+            self.visualization.begin_collapse()
+
+            def _finish_hide():
+                self._collapse_timer_id = None
+                self._hide_now()
+                return False
+
+            self._collapse_timer_id = GLib.timeout_add(160, _finish_hide)
+            return
+
+        self._hide_now()
+
+    def _hide_now(self):
+        """Immediately hide the OSD and stop audio monitoring."""
         if not self.visible:
             return
         
@@ -463,9 +493,9 @@ def main():
     )
     parser.add_argument(
         "-v", "--viz",
-        choices=["waveform", "vu_meter"],
-        default="waveform",
-        help="Visualization type (default: waveform)"
+        choices=["waveform", "vu_meter", "wave"],
+        default="wave",
+        help="Visualization type (default: wave)"
     )
     parser.add_argument(
         "-w", "--width",
