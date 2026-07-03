@@ -13,7 +13,6 @@
 <p align="center">
     <img src="docs/screenshots/overlay.png" alt="wave overlay reacting to speech" width="640"><br>
     <sub>the overlay while dictating — pixel density follows volume, color follows pitch</sub>
-    <!-- TODO: replace with a demo GIF: hold F9 → wave overlay → text lands in editor -->
 </p>
 
 ---
@@ -149,7 +148,6 @@ RTX 3060 Ti, 11s speech clip: STT 0.17s (`distil-large-v3`) / 0.11s (`small`); g
 ## Screenshots
 
 ![wave overlay](docs/screenshots/overlay.png)
-<!-- TODO: settings GUI screenshot (docs/screenshots/settings.png) -->
 
 
 ## Credits & license
