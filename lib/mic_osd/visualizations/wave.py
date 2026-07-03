@@ -28,8 +28,8 @@ COLLAPSE_RATE = 0.55       # per-frame shrink factor during release collapse
 
 BRAID_CYCLES = 3.5         # how many strand crossings across the width
 BRAID_DRIFT_S = 5.0        # slow phase drift so the braid isn't static
-FACET_STEP = 4             # curve points per low-poly facet
-DOT_STEP = 6               # curve points per node dot
+PIXEL_CELL = 5             # pixel-fill cell size (px, includes 1px gap)
+EDGE_FADE_FRAC = 0.16      # strands/fill fade in/out over this fraction of width
 SPARK_LEVEL = 0.55         # peak level that fires a spark
 SPARK_LIFE_S = 0.35
 SPARK_COOLDOWN_S = 0.12
@@ -140,53 +140,63 @@ class WaveVisualization(BaseVisualization):
         ys_a = ys + separation
         ys_b = ys - separation
 
-        self._draw_lowpoly_fill(cr, xs, ys, baseline)
+        self._draw_pixel_fill(cr, xs, ys, baseline, width)
 
-        # Back strand (gray) first, cream strand on top — the alpha dip at
-        # crossings sells the over/under weave.
-        self._draw_strand(cr, xs, ys_b, GRAY, 0.55, 1.8)
-        self._draw_strand(cr, xs, ys_a, CREAM, 0.95, 2.2)
+        # Back strand (gray) first, cream strand on top; both fade out at
+        # the left/right edges to match the feathered scrim.
+        self._draw_strand(cr, xs, ys_b, GRAY, 0.55, 1.8, width)
+        self._draw_strand(cr, xs, ys_a, CREAM, 0.95, 2.2, width)
 
-        self._draw_node_dots(cr, xs, ys, levels)
         self._draw_sparks(cr, xs, ys)
 
-    def _draw_lowpoly_fill(self, cr: cairo.Context, xs, ys, baseline):
-        """Sharp triangular facets between the curve and the baseline."""
-        n = len(xs)
-        shade_toggle = False
-        for i in range(0, n - FACET_STEP, FACET_STEP):
-            j = min(i + FACET_STEP, n - 1)
-            x0, y0 = xs[i], ys[i]
-            x1, y1 = xs[j], ys[j]
+    @staticmethod
+    def _edge_fade(x, width):
+        """0→1 ramp near the left/right edges, 1 in the middle."""
+        fade_px = width * EDGE_FADE_FRAC
+        return max(0.0, min(1.0, x / fade_px, (width - x) / fade_px))
 
-            # Facet pair: upper triangle (curve edge) + lower (baseline edge),
-            # alternating shades for the crystalline look.
-            for tri, alpha in (
-                (((x0, y0), (x1, y1), (x0, baseline)), 0.10 if shade_toggle else 0.06),
-                (((x1, y1), (x1, baseline), (x0, baseline)), 0.05 if shade_toggle else 0.09),
-            ):
-                cr.move_to(*tri[0])
-                cr.line_to(*tri[1])
-                cr.line_to(*tri[2])
-                cr.close_path()
-                cr.set_source_rgba(*CREAM, alpha)
+    def _draw_pixel_fill(self, cr: cairo.Context, xs, ys, baseline, width):
+        """Pixel-grid fill under the curve: retro square cells with a checker
+        dither, fading downward and out toward the edges (spans the full
+        curve, edge to edge)."""
+        x_left, x_right = xs[0], xs[-1]
+        cell = PIXEL_CELL
+        col = 0
+        x = x_left
+        while x < x_right:
+            # Curve height at this column (linear interp on the point grid)
+            y_curve = float(np.interp(x + cell / 2, xs, ys))
+            fade_x = self._edge_fade(x + cell / 2, width)
+            row = 0
+            y = baseline - cell
+            while y + cell > y_curve:
+                # Fade toward the curve top; checker dither for texture
+                depth = (baseline - y) / max(baseline - y_curve, 1e-6)
+                a = 0.16 * (1.0 - depth * 0.65)
+                if (col + row) % 2:
+                    a *= 0.55
+                cr.rectangle(x, max(y, y_curve), cell - 1, cell - 1)
+                cr.set_source_rgba(*CREAM, a * fade_x)
                 cr.fill()
-            shade_toggle = not shade_toggle
+                y -= cell
+                row += 1
+            x += cell
+            col += 1
 
-    def _draw_strand(self, cr: cairo.Context, xs, ys, color, alpha, line_width):
+    def _draw_strand(self, cr: cairo.Context, xs, ys, color, alpha, line_width, width):
+        # Horizontal alpha ramp so the strand dissolves at the edges,
+        # mirroring the feathered scrim.
+        grad = cairo.LinearGradient(0, 0, width, 0)
+        grad.add_color_stop_rgba(0.0, *color, 0.0)
+        grad.add_color_stop_rgba(EDGE_FADE_FRAC, *color, alpha)
+        grad.add_color_stop_rgba(1.0 - EDGE_FADE_FRAC, *color, alpha)
+        grad.add_color_stop_rgba(1.0, *color, 0.0)
         self._curve_path(cr, xs, ys)
-        cr.set_source_rgba(*color, alpha)
+        cr.set_source(grad)
         cr.set_line_width(line_width)
         cr.set_line_cap(cairo.LINE_CAP_ROUND)
         cr.set_line_join(cairo.LINE_JOIN_ROUND)
         cr.stroke()
-
-    def _draw_node_dots(self, cr: cairo.Context, xs, ys, levels):
-        for i in range(0, len(xs), DOT_STEP):
-            r = 1.4 + levels[i] * 1.6
-            cr.arc(xs[i], ys[i], r, 0, 2 * math.pi)
-            cr.set_source_rgba(*CREAM, 0.35 + levels[i] * 0.55)
-            cr.fill()
 
     def _draw_sparks(self, cr: cairo.Context, xs, ys):
         now = time.monotonic()
