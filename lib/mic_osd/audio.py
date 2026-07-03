@@ -1,149 +1,116 @@
 """
-Audio monitoring module for mic-osd.
+Audio level source for mic-osd.
 
-Captures microphone input in real-time and provides level/sample data
-for visualization.
+Reads the live level that the main hyprwhspr daemon already writes from its
+capture stream (AUDIO_LEVEL_FILE) instead of opening a second microphone
+stream. Keeps the original AudioMonitor API (start/stop/get_level/
+get_samples) so the rest of mic-osd is unchanged; get_samples() returns a
+rolling history of recent levels, which the waveform visualization renders
+as a scrolling amplitude graph.
 """
 
 import threading
+from collections import deque
+from pathlib import Path
+
 import numpy as np
 
+# Import paths with fallback for daemon context (same pattern as main.py)
 try:
-    import sounddevice as sd
+    from ..src.paths import AUDIO_LEVEL_FILE
 except ImportError:
-    sd = None
+    try:
+        from src.paths import AUDIO_LEVEL_FILE
+    except ImportError:
+        import os
+        _runtime = Path(os.environ.get('XDG_RUNTIME_DIR', '/tmp'))
+        AUDIO_LEVEL_FILE = _runtime / 'hyprwhspr' / 'audio_level'
+
+# One appended sample per poll tick → constant scroll speed. 25 ms ticks with
+# a 64-sample history ≈ 1.6 s of visible amplitude history.
+POLL_INTERVAL_S = 0.025
+HISTORY_LEN = 64
 
 
 class AudioMonitor:
     """
-    Real-time microphone audio monitor.
-    
-    Uses sounddevice to capture audio from the default microphone
-    and provides peak levels and raw samples for visualization.
+    Level-file audio monitor (no second mic stream).
+
+    The daemon writes a 0.0–1.0 level (already 10x-scaled RMS of the real
+    capture) to AUDIO_LEVEL_FILE while recording. This class polls that file
+    and keeps a rolling history for visualization.
     """
-    
-    def __init__(self, callback=None, samplerate=44100, blocksize=1024):
-        """
-        Initialize the audio monitor.
-        
-        Args:
-            callback: Function called with (peak_level, samples) on each audio block
-            samplerate: Audio sample rate in Hz
-            blocksize: Number of samples per callback
-        """
-        if sd is None:
-            raise ImportError("sounddevice is required for audio monitoring")
-        
+
+    def __init__(self, callback=None, samplerate=None, blocksize=None):
+        # samplerate/blocksize accepted for API compatibility; unused.
         self.callback = callback
-        self.samplerate = samplerate
-        self.blocksize = blocksize
-        self.stream = None
         self.running = False
-        
-        self.peak_level = 0.0
-        self.rms_level = 0.0
-        self.samples = np.zeros(blocksize)
-        
+
+        self._levels = deque([0.0] * HISTORY_LEN, maxlen=HISTORY_LEN)
+        self._current = 0.0
+        self._thread = None
+        self._stop = threading.Event()
         self._lock = threading.Lock()
-    
-    def _audio_callback(self, indata, frames, time, status):
-        """Called by sounddevice for each audio block."""
-        
-        # Get mono samples
-        samples = indata[:, 0].copy()
-        
-        # Calculate levels
-        peak = float(np.max(np.abs(samples)))
-        rms = float(np.sqrt(np.mean(samples ** 2)))
-        
-        with self._lock:
-            self.peak_level = peak
-            self.rms_level = rms
-            self.samples = samples
-        
-        # Call user callback
-        if self.callback:
-            self.callback(peak, samples)
-    
-    def get_default_device(self):
-        """Get info about the default input device."""
+
+    def _read_level(self) -> float:
         try:
-            return sd.query_devices(kind='input')
-        except Exception as e:
-            return {"name": f"Error: {e}"}
-    
-    def list_devices(self):
-        """List all available audio input devices."""
-        devices = []
-        for i, dev in enumerate(sd.query_devices()):
-            if dev['max_input_channels'] > 0:
-                devices.append({
-                    'index': i,
-                    'name': dev['name'],
-                    'channels': dev['max_input_channels'],
-                    'samplerate': dev['default_samplerate']
-                })
-        return devices
-    
+            return max(0.0, min(1.0, float(AUDIO_LEVEL_FILE.read_text().strip())))
+        except (FileNotFoundError, ValueError, OSError):
+            return 0.0
+
+    def _poll_loop(self):
+        while not self._stop.is_set():
+            level = self._read_level()
+            with self._lock:
+                self._current = level
+                self._levels.append(level)
+            if self.callback:
+                try:
+                    self.callback(level, self.get_samples())
+                except Exception:
+                    pass
+            self._stop.wait(POLL_INTERVAL_S)
+
     def start(self, device=None):
-        """
-        Start monitoring the microphone.
-        
-        Args:
-            device: Device index or name (None = default)
-        """
+        """Start polling the daemon's level file."""
         if self.running:
             return
-        
-        try:
-            self.stream = sd.InputStream(
-                device=device,
-                channels=1,
-                samplerate=self.samplerate,
-                blocksize=self.blocksize,
-                callback=self._audio_callback
-            )
-            self.stream.start()
-            self.running = True
-        except Exception as e:
-            raise RuntimeError(f"Failed to start audio monitoring: {e}")
-    
+        self._stop.clear()
+        with self._lock:
+            self._levels.extend([0.0] * HISTORY_LEN)
+            self._current = 0.0
+        self._thread = threading.Thread(
+            target=self._poll_loop, daemon=True, name='mic-osd-level-poll')
+        self._thread.start()
+        self.running = True
+
     def stop(self):
-        """Stop monitoring."""
+        """Stop polling."""
         if not self.running:
             return
-        
         self.running = False
-        
-        if self.stream:
-            try:
-                self.stream.stop()
-                self.stream.close()
-            except Exception:
-                pass
-            finally:
-                self.stream = None
-        
-        # Reset levels
+        self._stop.set()
+        if self._thread:
+            self._thread.join(timeout=0.2)
+            self._thread = None
         with self._lock:
-            self.peak_level = 0.0
-            self.rms_level = 0.0
-            self.samples = np.zeros(self.blocksize)
-    
-    def get_level(self):
-        """Get current peak level (thread-safe)."""
+            self._current = 0.0
+            self._levels.extend([0.0] * HISTORY_LEN)
+
+    def get_level(self) -> float:
+        """Current level, 0.0–1.0 (thread-safe)."""
         with self._lock:
-            return self.peak_level
-    
-    def get_samples(self):
-        """Get current samples (thread-safe)."""
+            return self._current
+
+    def get_samples(self) -> np.ndarray:
+        """Rolling level history, oldest→newest (thread-safe)."""
         with self._lock:
-            return self.samples.copy()
-    
+            return np.array(self._levels)
+
     def __enter__(self):
         self.start()
         return self
-    
+
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.stop()
         return False

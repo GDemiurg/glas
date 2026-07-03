@@ -58,6 +58,10 @@ class OSDWindow(Gtk.Window):
         self._setup_layer_shell()
         self._setup_window()
         self._setup_drawing_area()
+
+        # Input transparency needs a realized surface; re-apply on every
+        # realize since hide/show cycles can recreate the Wayland surface.
+        self.connect('realize', lambda *_: self.make_click_through())
     
     def _setup_layer_shell(self):
         """Configure layer shell for overlay behavior."""
@@ -229,12 +233,18 @@ class OSDWindow(Gtk.Window):
     def make_click_through(self):
         """
         Make the window click-through (input passes to windows below).
-        
-        This needs to be called after the window is realized.
+
+        This needs to be called after the window is realized. Layer-shell
+        keyboard mode NONE only prevents keyboard focus; pointer clicks
+        still land on the surface unless the input region is emptied.
         """
-        # For layer shell windows, we just need to not set keyboard mode
-        # The default is already non-interactive
-        pass
+        try:
+            import cairo
+            surface = self.get_surface()
+            if surface is not None:
+                surface.set_input_region(cairo.Region())
+        except Exception as e:
+            print(f"[MIC-OSD] Could not set empty input region: {e}", flush=True)
 
 
 def load_css(css_path=None):

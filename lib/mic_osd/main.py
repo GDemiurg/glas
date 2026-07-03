@@ -196,6 +196,11 @@ class MicOSD:
 
         self.visible = True
         self.window.set_visible(True)
+        # Re-assert input transparency — the Wayland surface may have been
+        # recreated since the last show, and a clickable overlay would
+        # steal clicks meant for the window the user is dictating into.
+        if hasattr(self.window, 'make_click_through'):
+            self.window.make_click_through()
 
         # Start audio monitoring
         if not self.audio_monitor:

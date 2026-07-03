@@ -121,6 +121,21 @@ Voice commands (built-in, `symbol_replacements: true`): "new line", "period",
 "comma", "question mark", "open paren", "tab", … full list in
 `lib/src/text_injector.py`.
 
+## Mic visualizer overlay
+
+While F9 is held, a small floating waveform appears bottom-center: a
+scrolling row of bars driven by the **real** capture level — the daemon
+writes its live RMS (20×/s, tmpfs `$XDG_RUNTIME_DIR/hyprwhspr/audio_level`)
+and the overlay reads it; no second mic stream is opened. Release → vanishes.
+
+- Overlay is a GTK4 + gtk4-layer-shell OSD (upstream `lib/mic_osd/`, adapted):
+  overlay layer, keyboard mode NONE, **empty input region** → click-through,
+  never steals focus, inject-at-cursor unaffected.
+- **Headless toggle**: `"mic_osd_enabled": false` in config.json → no overlay,
+  dictation unchanged.
+- Requires system packages: `gtk4 gtk4-layer-shell python-gobject python-cairo`
+  and the venv created with (or flipped to) `include-system-site-packages = true`.
+
 ## Config — `~/.config/hyprwhspr/config.json`
 
 ```json

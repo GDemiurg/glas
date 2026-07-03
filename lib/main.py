@@ -1873,8 +1873,8 @@ class hyprwhsprApp:
             # Muted mic detection: 5e-7 threshold catches true digital silence but not quiet rooms
             zero_samples = 0
             zero_threshold = 5e-7
-            samples_to_cancel = 10  # 1 second at 100ms intervals
-            grace_samples = 5  # Skip first 0.5s to let stream stabilize (avoids false mute on rapid toggle)
+            samples_to_cancel = 20  # 1 second at 50ms intervals
+            grace_samples = 10  # Skip first 0.5s to let stream stabilize (avoids false mute on rapid toggle)
             total_samples = 0
 
             try:
@@ -1905,8 +1905,10 @@ class hyprwhsprApp:
                         if not hasattr(self, '_last_level_error_log') or now - self._last_level_error_log > 10.0:
                             print(f"[WARN] Audio level monitoring error: {e}", flush=True)
                             self._last_level_error_log = now
-                    # Sleep in small increments so the stop event wakes us quickly
-                    self._audio_level_stop.wait(0.1)
+                    # Sleep in small increments so the stop event wakes us quickly.
+                    # 50ms = 20Hz level updates for a smooth OSD waveform scroll
+                    # (file lives on tmpfs, so the write rate costs no disk I/O).
+                    self._audio_level_stop.wait(0.05)
             finally:
                 # Clean up file when not recording (always runs, even on early return)
                 try:

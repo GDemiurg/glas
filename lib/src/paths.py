@@ -25,7 +25,9 @@ CONFIG_FILE = CONFIG_DIR / 'config.json'
 RECORDING_STATUS_FILE = CONFIG_DIR / 'recording_status'
 RECORDING_CONTROL_FILE = CONFIG_DIR / 'recording_control'
 SOCKET_FILE = CONFIG_DIR / 'hyprwhspr.sock'
-AUDIO_LEVEL_FILE = CONFIG_DIR / 'audio_level'
+# Written ~20x/s while recording — lives on tmpfs, not in CONFIG_DIR,
+# to avoid constant disk writes.
+AUDIO_LEVEL_FILE = Path(os.environ.get('XDG_RUNTIME_DIR', '/tmp')) / 'hyprwhspr' / 'audio_level'
 RECOVERY_REQUESTED_FILE = CONFIG_DIR / 'recovery_requested'
 RECOVERY_RESULT_FILE = CONFIG_DIR / 'recovery_result'
 MIC_ZERO_VOLUME_FILE = CONFIG_DIR / '.mic_zero_volume'

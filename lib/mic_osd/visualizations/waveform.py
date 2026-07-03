@@ -29,8 +29,10 @@ class WaveformVisualization(BaseVisualization):
         self.bar_gap = 2
         self.min_bar_height = 2
 
-        # Amplification for more visible response
-        self.amplification = 4.0
+        # Amplification for more visible response. The level-file AudioMonitor
+        # feeds daemon-written levels that are already 10x-scaled RMS, so no
+        # extra gain is needed (raw-sample mode used 4.0).
+        self.amplification = 1.0
 
         # Smoothing for bar heights (makes animation smoother)
         self.bar_heights = np.zeros(self.num_bars)
