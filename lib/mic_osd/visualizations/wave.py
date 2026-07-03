@@ -10,7 +10,6 @@ release (the OSD hides ~160ms after begin_collapse()).
 """
 
 import math
-import time
 
 import cairo
 import numpy as np
@@ -30,9 +29,7 @@ BRAID_CYCLES = 3.5         # how many strand crossings across the width
 BRAID_DRIFT_S = 5.0        # slow phase drift so the braid isn't static
 PIXEL_CELL = 5             # pixel-fill cell size (px, includes 1px gap)
 EDGE_FADE_FRAC = 0.16      # strands/fill fade in/out over this fraction of width
-SPARK_LEVEL = 0.55         # peak level that fires a spark
-SPARK_LIFE_S = 0.35
-SPARK_COOLDOWN_S = 0.12
+ORANGE = (0.996, 0.502, 0.098)  # gruvbox orange #fe8019 — loud-pixel tint
 
 
 class WaveVisualization(BaseVisualization):
@@ -45,8 +42,6 @@ class WaveVisualization(BaseVisualization):
         self._braid_phase = 0.0
         self._recent_max = 0.0
         self._collapsing = False
-        self._sparks = []          # list of (point_index, birth_monotonic)
-        self._last_spark_at = 0.0
         self.state_manager = StateManager()
 
     # ------------------------ Data ------------------------
@@ -68,14 +63,6 @@ class WaveVisualization(BaseVisualization):
         # Liquid: eased glide toward the target in both directions
         self.display += (target - self.display) * LIQUID_EASE
 
-        # Peak sparks: newest part of the wave crossing the loud threshold
-        now = time.monotonic()
-        if (level >= SPARK_LEVEL
-                and now - self._last_spark_at >= SPARK_COOLDOWN_S):
-            self._sparks.append((NUM_POINTS - 3, now))
-            self._last_spark_at = now
-        self._sparks = [s for s in self._sparks if now - s[1] < SPARK_LIFE_S]
-
         # Idle-breathing blend factor + phases
         self._recent_max = max(float(target.max()), self._recent_max * 0.94)
         self._breath_phase = (self._breath_phase +
@@ -94,7 +81,6 @@ class WaveVisualization(BaseVisualization):
         self._collapsing = False
         self.display[:] = 0.0
         self._recent_max = 0.0
-        self._sparks = []
 
     # ------------------------ Drawing ------------------------
 
@@ -140,14 +126,12 @@ class WaveVisualization(BaseVisualization):
         ys_a = ys + separation
         ys_b = ys - separation
 
-        self._draw_pixel_fill(cr, xs, ys, baseline, width)
+        self._draw_pixel_fill(cr, xs, ys, levels, baseline, width)
 
         # Back strand (gray) first, cream strand on top; both fade out at
         # the left/right edges to match the feathered scrim.
         self._draw_strand(cr, xs, ys_b, GRAY, 0.55, 1.8, width)
         self._draw_strand(cr, xs, ys_a, CREAM, 0.95, 2.2, width)
-
-        self._draw_sparks(cr, xs, ys)
 
     @staticmethod
     def _edge_fade(x, width):
@@ -155,28 +139,38 @@ class WaveVisualization(BaseVisualization):
         fade_px = width * EDGE_FADE_FRAC
         return max(0.0, min(1.0, x / fade_px, (width - x) / fade_px))
 
-    def _draw_pixel_fill(self, cr: cairo.Context, xs, ys, baseline, width):
-        """Pixel-grid fill under the curve: retro square cells with a checker
-        dither, fading downward and out toward the edges (spans the full
-        curve, edge to edge)."""
+    def _draw_pixel_fill(self, cr: cairo.Context, xs, ys, levels, baseline, width):
+        """Pixel-grid fill under the curve: retro checker-dithered cells that
+        react to volume — loud columns get fuller (bigger) cells tinted from
+        cream toward gruvbox orange. Spans the full curve, edge to edge."""
         x_left, x_right = xs[0], xs[-1]
         cell = PIXEL_CELL
         col = 0
         x = x_left
         while x < x_right:
-            # Curve height at this column (linear interp on the point grid)
-            y_curve = float(np.interp(x + cell / 2, xs, ys))
-            fade_x = self._edge_fade(x + cell / 2, width)
+            cx = x + cell / 2
+            # Curve height + local volume at this column
+            y_curve = float(np.interp(cx, xs, ys))
+            lvl = float(np.interp(cx, xs, levels))
+            fade_x = self._edge_fade(cx, width)
+
+            # Volume → cell inflation (gap closes) and cream→orange tint
+            inset = 1.0 - min(lvl * 1.6, 1.0)          # 1px gap → 0 when loud
+            t = min(lvl * 1.3, 1.0)
+            r = CREAM[0] + (ORANGE[0] - CREAM[0]) * t
+            g = CREAM[1] + (ORANGE[1] - CREAM[1]) * t
+            b = CREAM[2] + (ORANGE[2] - CREAM[2]) * t
+
             row = 0
             y = baseline - cell
             while y + cell > y_curve:
                 # Fade toward the curve top; checker dither for texture
                 depth = (baseline - y) / max(baseline - y_curve, 1e-6)
-                a = 0.16 * (1.0 - depth * 0.65)
+                a = (0.16 + lvl * 0.10) * (1.0 - depth * 0.65)
                 if (col + row) % 2:
                     a *= 0.55
-                cr.rectangle(x, max(y, y_curve), cell - 1, cell - 1)
-                cr.set_source_rgba(*CREAM, a * fade_x)
+                cr.rectangle(x, max(y, y_curve), cell - inset, cell - inset)
+                cr.set_source_rgba(r, g, b, a * fade_x)
                 cr.fill()
                 y -= cell
                 row += 1
@@ -197,24 +191,6 @@ class WaveVisualization(BaseVisualization):
         cr.set_line_cap(cairo.LINE_CAP_ROUND)
         cr.set_line_join(cairo.LINE_JOIN_ROUND)
         cr.stroke()
-
-    def _draw_sparks(self, cr: cairo.Context, xs, ys):
-        now = time.monotonic()
-        for idx, birth in self._sparks:
-            age = (now - birth) / SPARK_LIFE_S
-            if age >= 1.0:
-                continue
-            # Rise and fade
-            x = xs[idx]
-            y = ys[idx] - 6 - age * 10
-            size = 3.0 * (1.0 - age * 0.4)
-            cr.move_to(x, y - size)
-            cr.line_to(x + size, y)
-            cr.line_to(x, y + size)
-            cr.line_to(x - size, y)
-            cr.close_path()
-            cr.set_source_rgba(*CREAM, 0.9 * (1.0 - age))
-            cr.fill()
 
     @staticmethod
     def _curve_path(cr: cairo.Context, xs: np.ndarray, ys: np.ndarray):
