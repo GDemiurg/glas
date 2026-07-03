@@ -575,27 +575,23 @@ class GlasApp(Adw.Application):
         restart = Gio.SimpleAction.new('restart-daemon', None)
         restart.connect('activate', lambda *_: system.daemon_ctl('restart'))
         self.add_action(restart)
-        self.tray = None
 
     def _on_activate(self, app):
-        if self.tray is None:
-            try:
-                from .tray import GlasTray
-                self.tray = GlasTray(on_open_settings=self._open_window,
-                                     on_quit=self._quit)
-                # Tray keeps the app alive with the window closed
-                self.hold()
-            except Exception as e:
-                print(f'[GLAS] Tray unavailable: {e}', flush=True)
-        self._open_window()
-
-    def _open_window(self):
-        win = self.get_active_window() or GlasWindow(self)
+        self._ensure_tray()
+        win = self.get_active_window() or GlasWindow(app)
         win.present()
 
-    def _quit(self):
-        self.release()
-        self.quit()
+    @staticmethod
+    def _ensure_tray():
+        """Spawn the standalone tray process (single-instance guarded)."""
+        import subprocess
+        from pathlib import Path
+        tray = Path(__file__).resolve().parent.parent.parent / 'bin' / 'glas-tray'
+        try:
+            subprocess.Popen([str(tray)], start_new_session=True,
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except OSError as e:
+            print(f'[GLAS] Tray spawn failed: {e}', flush=True)
 
 
 def main():
