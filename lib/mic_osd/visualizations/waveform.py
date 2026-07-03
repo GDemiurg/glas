@@ -91,16 +91,12 @@ class WaveformVisualization(BaseVisualization):
     def draw(self, cr: cairo.Context, width: int, height: int):
         """Draw the bar visualization with recording indicator."""
         padding = 16
-        
-        # Recording indicator (just the dot) takes up left side
-        indicator_width = 30
-        bars_start_x = padding + indicator_width
+
+        # Bars use the full width — no indicator dot, no timer (minimal look)
+        bars_start_x = padding
         bars_width = width - bars_start_x - padding
         bars_height = height - (padding * 2)
         center_y = height / 2
-        
-        # Draw recording indicator (red dot + "Recording...")
-        self._draw_recording_indicator(cr, padding, center_y)
         
         # Calculate bar dimensions to fill available space
         actual_num_bars = self.num_bars
@@ -181,18 +177,19 @@ class WaveformVisualization(BaseVisualization):
             # Draw bar centered vertically
             bar_top = center_y - bar_h / 2
             
+            # Radius clamped to half the shortest side so tiny bars stay valid paths
+            bar_r = max(0.5, min(bar_width / 2, bar_h / 2, 3))
+
             # Draw glow effect
             cr.set_source_rgba(r, g, b, 0.3 * opacity_modulation)
-            cr.rectangle(x - 1, bar_top - 1, bar_width + 2, bar_h + 2)
-            cr.fill()
-            
-            # Draw main bar
-            cr.set_source_rgba(r, g, b, 0.9 * opacity_modulation)
-            cr.rectangle(x, bar_top, bar_width, bar_h)
+            self._rounded_rect(cr, x - 1, bar_top - 1, bar_width + 2, bar_h + 2, bar_r)
             cr.fill()
 
-        # Draw elapsed time (for long-form mode)
-        self._draw_elapsed_time(cr, width, height)
+            # Draw main bar (rounded caps)
+            cr.set_source_rgba(r, g, b, 0.9 * opacity_modulation)
+            self._rounded_rect(cr, x, bar_top, bar_width, bar_h, bar_r)
+            cr.fill()
+
 
     def set_state(self, state_str: str):
         """Set the visualizer state from a string value."""

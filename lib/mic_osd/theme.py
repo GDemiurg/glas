@@ -9,19 +9,21 @@ import re
 from pathlib import Path
 
 
-# Default colors (fallback if theme not found)
+# Default colors — gruvbox (dark) palette. Background is a barely-there
+# scrim so the bars float over whatever is behind the overlay; border
+# disabled (None skips the stroke).
 DEFAULT_COLORS = {
-    'background-color': (0.1, 0.1, 0.15, 0.95),
-    'border-color': (0.2, 0.8, 1.0),        # Cyan
-    'bar-color-left': (0.2, 0.8, 1.0),      # Cyan
-    'bar-color-right': (0.0, 1.0, 0.6),     # Green
-    'recording-dot': (1.0, 0.2, 0.33),      # Red
-    'text-color': (0.8, 0.84, 0.96, 1.0),   # Light gray
+    'background-color': (0.114, 0.125, 0.129, 0.22),  # #1d2021 @ 22%
+    'border-color': None,                       # borderless
+    'bar-color-left': (0.980, 0.741, 0.184),    # gruvbox yellow #fabd2f
+    'bar-color-right': (0.996, 0.502, 0.098),   # gruvbox orange #fe8019
+    'recording-dot': (0.984, 0.286, 0.204),     # gruvbox red #fb4934
+    'text-color': (0.573, 0.514, 0.455, 1.0),   # gruvbox gray #928374
     # State-specific colors for visualizer
-    'paused-dot': (1.0, 0.75, 0.0),         # Amber
-    'processing-dot': (0.2, 0.9, 0.4),      # Green
-    'error-dot': (1.0, 0.2, 0.2),           # Bright red
-    'success-dot': (0.0, 1.0, 0.5),         # Green
+    'paused-dot': (0.980, 0.741, 0.184),        # gruvbox yellow #fabd2f
+    'processing-dot': (0.557, 0.753, 0.486),    # gruvbox aqua #8ec07c
+    'error-dot': (0.984, 0.286, 0.204),         # gruvbox red #fb4934
+    'success-dot': (0.722, 0.733, 0.149),       # gruvbox green #b8bb26
 }
 
 

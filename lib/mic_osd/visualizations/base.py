@@ -153,13 +153,13 @@ class BaseVisualization(ABC):
         pass
     
     def draw_background(self, cr: cairo.Context, width: int, height: int):
-        """Draw common background with border."""
-        # Fill background
+        """Draw common background (rounded scrim) with optional border."""
+        radius = 14
+        self._rounded_rect(cr, 0, 0, width, height, radius)
         cr.set_source_rgba(*self.background_color)
-        cr.rectangle(0, 0, width, height)
         cr.fill()
-        
-        # Draw border
+
+        # Draw border (skipped when the theme border is None)
         border_color = theme.border
         if border_color:
             if len(border_color) == 3:
@@ -167,5 +167,14 @@ class BaseVisualization(ABC):
             else:
                 cr.set_source_rgba(*border_color)
             cr.set_line_width(2)
-            cr.rectangle(1, 1, width - 2, height - 2)
+            self._rounded_rect(cr, 1, 1, width - 2, height - 2, radius)
             cr.stroke()
+
+    @staticmethod
+    def _rounded_rect(cr: cairo.Context, x, y, w, h, r):
+        cr.new_sub_path()
+        cr.arc(x + w - r, y + r, r, -math.pi / 2, 0)
+        cr.arc(x + w - r, y + h - r, r, 0, math.pi / 2)
+        cr.arc(x + r, y + h - r, r, math.pi / 2, math.pi)
+        cr.arc(x + r, y + r, r, math.pi, 3 * math.pi / 2)
+        cr.close_path()
