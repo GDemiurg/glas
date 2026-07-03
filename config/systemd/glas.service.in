@@ -1,0 +1,29 @@
+[Unit]
+Description=Glas voice dictation daemon (hyprwhspr fork)
+Documentation=file:@ROOT@/README.md
+
+PartOf=graphical-session.target
+After=graphical-session.target
+
+After=pipewire.service
+Wants=pipewire.service
+
+Wants=wireplumber.service
+After=wireplumber.service
+
+[Service]
+Type=simple
+ExecStartPre=/bin/bash -lc 'for i in $(seq 1 60); do ls "$XDG_RUNTIME_DIR"/wayland-* >/dev/null 2>&1 && exit 0; sleep 0.25; done; echo "Wayland socket not found"; exit 1'
+ExecStart=@ROOT@/.venv/bin/python @ROOT@/lib/main.py
+ExecStopPost=/bin/bash -c '( pkill -9 -f "hyprwhspr-virtual-keyboard" 2>/dev/null; pkill -9 -f "hyprwhspr-ydotool.sock" 2>/dev/null ) || true'
+Environment=HYPRWHSPR_ROOT=@ROOT@
+Environment=PYTHONPATH=@ROOT@/lib
+Environment=PYTHONUNBUFFERED=1
+Restart=on-failure
+RestartSec=2
+SuccessExitStatus=143
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=graphical-session.target

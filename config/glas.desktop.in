@@ -1,0 +1,16 @@
+[Desktop Entry]
+Type=Application
+Name=Glas
+GenericName=Voice dictation
+Comment=Local push-to-talk dictation — settings and control
+Exec=@ROOT@/bin/glas-settings
+Icon=glas
+Terminal=false
+Categories=Utility;Accessibility;Settings;
+Keywords=voice;dictation;whisper;speech;mic;glas;
+
+Actions=toggle;
+
+[Desktop Action toggle]
+Name=Start/stop dictation daemon
+Exec=@ROOT@/utils/glas-toggle

@@ -1,0 +1,12 @@
+{
+  "recording_mode": "push_to_talk",
+  "primary_shortcut": "F9",
+  "model": "small",
+  "language": null,
+  "llm_cleanup": false,
+  "llm_cleanup_model": "gemma3:4b",
+  "audio_feedback": true,
+  "grab_keys": false,
+  "mic_osd_enabled": true,
+  "mic_osd_style": "wave"
+}
