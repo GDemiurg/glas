@@ -154,9 +154,10 @@ class WaveVisualization(BaseVisualization):
 
         self._draw_pixel_fill(cr, xs, ys, levels, self.pitch_display, baseline, width)
 
-        # Back strand (gray) first, cream strand on top; both fade out at
-        # the left/right edges to match the feathered scrim.
-        self._draw_strand(cr, xs, ys_b, GRAY, 0.55, 1.8, width)
+        # Back strand carries the same pitch/volume palette as the pixels
+        # below it; cream strand stays on top. Both fade at the edges.
+        self._draw_pitch_strand(cr, xs, ys_b, levels, self.pitch_display,
+                                0.75, 1.8, width)
         self._draw_strand(cr, xs, ys_a, CREAM, 0.95, 2.2, width)
 
     @staticmethod
@@ -229,6 +230,32 @@ class WaveVisualization(BaseVisualization):
                 row += 1
             x += cell
             col += 1
+
+    def _draw_pitch_strand(self, cr: cairo.Context, xs, ys, levels, pitches,
+                           alpha, line_width, width):
+        """Strand stroked with the pixel fill's palette: per-stop color from
+        local pitch, blended in by local volume, edge fade folded into the
+        stop alphas."""
+        grad = cairo.LinearGradient(0, 0, width, 0)
+        stops = 16
+        for i in range(stops + 1):
+            frac = i / stops
+            x = frac * width
+            lvl = float(np.interp(x, xs, levels))
+            pitch = float(np.interp(x, xs, pitches))
+            pr, pg, pb = self._pitch_color(pitch)
+            t = min(lvl * 3.5, 1.0)
+            r = CREAM[0] + (pr - CREAM[0]) * t
+            g = CREAM[1] + (pg - CREAM[1]) * t
+            b = CREAM[2] + (pb - CREAM[2]) * t
+            grad.add_color_stop_rgba(frac, r, g, b,
+                                     alpha * self._edge_fade(x, width))
+        self._curve_path(cr, xs, ys)
+        cr.set_source(grad)
+        cr.set_line_width(line_width)
+        cr.set_line_cap(cairo.LINE_CAP_ROUND)
+        cr.set_line_join(cairo.LINE_JOIN_ROUND)
+        cr.stroke()
 
     def _draw_strand(self, cr: cairo.Context, xs, ys, color, alpha, line_width, width):
         # Horizontal alpha ramp so the strand dissolves at the edges,
