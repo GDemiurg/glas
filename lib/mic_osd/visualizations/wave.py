@@ -178,12 +178,20 @@ class WaveVisualization(BaseVisualization):
                 lo[1] + (hi[1] - lo[1]) * t,
                 lo[2] + (hi[2] - lo[2]) * t)
 
+    @staticmethod
+    def _cell_hash(col, row):
+        """Deterministic 0–1 value per grid cell — stable across frames so
+        the density gate never flickers."""
+        h = (col * 73856093) ^ (row * 19349663)
+        return ((h >> 3) % 1024) / 1024.0
+
     def _draw_pixel_fill(self, cr: cairo.Context, xs, ys, levels, pitches,
                          baseline, width):
-        """Pixel-grid fill under the curve: retro checker-dithered cells.
-        Volume drives cell size/alpha (loud = fuller, brighter); pitch
+        """Pixel-grid fill under the curve. Volume drives pixel DENSITY —
+        quiet columns show a sparse scatter of cells, loud ones pack toward
+        a solid grid (per-cell hash gate, stable frame to frame). Pitch
         drives the tint — orange for a low voice, yellow mid, aqua high.
-        Quiet columns stay near cream. Spans the full curve, edge to edge."""
+        Spans the full curve, edge to edge."""
         x_left, x_right = xs[0], xs[-1]
         cell = PIXEL_CELL
         col = 0
@@ -196,9 +204,7 @@ class WaveVisualization(BaseVisualization):
             pitch = float(np.interp(cx, xs, pitches))
             fade_x = self._edge_fade(cx, width)
 
-            # Volume → cell inflation (gap closes when loud)
-            inset = 1.0 - min(lvl * 1.6, 1.0)
-            # Pitch → hue; full saturation already at normal speech volume,
+            # Pitch → hue; full saturation at normal speech volume,
             # only near-silence stays cream
             pr, pg, pb = self._pitch_color(pitch)
             t = min(lvl * 3.5, 1.0)
@@ -206,17 +212,19 @@ class WaveVisualization(BaseVisualization):
             g = CREAM[1] + (pg - CREAM[1]) * t
             b = CREAM[2] + (pb - CREAM[2]) * t
 
+            # Volume → coverage: fraction of cells that get drawn at all
+            coverage = min(0.12 + lvl * 1.7, 1.0)
+
             row = 0
             y = baseline - cell
             while y + cell > y_curve:
-                # Fade toward the curve top; checker dither for texture
                 depth = (baseline - y) / max(baseline - y_curve, 1e-6)
-                a = (0.34 + lvl * 0.25) * (1.0 - depth * 0.55)
-                if (col + row) % 2:
-                    a *= 0.6
-                cr.rectangle(x, max(y, y_curve), cell - inset, cell - inset)
-                cr.set_source_rgba(r, g, b, a * fade_x)
-                cr.fill()
+                # Cells thin out toward the curve top; hash gate does the rest
+                if self._cell_hash(col, row) < coverage * (1.0 - depth * 0.45):
+                    a = (0.40 + lvl * 0.20) * (1.0 - depth * 0.35)
+                    cr.rectangle(x, max(y, y_curve), cell - 1, cell - 1)
+                    cr.set_source_rgba(r, g, b, a * fade_x)
+                    cr.fill()
                 y -= cell
                 row += 1
             x += cell
