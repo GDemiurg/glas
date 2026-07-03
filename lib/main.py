@@ -222,6 +222,23 @@ class hyprwhsprApp:
 
         # Pre-initialize mic-osd daemon (eliminates latency on recording)
         self._mic_osd_runner = None
+        if not self.config.get_setting('mic_osd_enabled', True):
+            # Headless mode: reap any OSD daemon left over from a previous
+            # run with the overlay enabled — otherwise it lingers orphaned.
+            # (runner.stop() no-ops without an adopted process, so kill via
+            # the PID file directly.)
+            try:
+                from src.paths import MIC_OSD_PID_FILE
+                if MIC_OSD_PID_FILE.exists():
+                    import signal as _signal
+                    pid = int(MIC_OSD_PID_FILE.read_text().strip())
+                    cmdline = Path(f'/proc/{pid}/cmdline')
+                    if cmdline.exists() and b'mic_osd' in cmdline.read_bytes():
+                        os.kill(pid, _signal.SIGTERM)
+                        print("[INIT] Reaped orphaned mic-osd daemon (overlay disabled)", flush=True)
+                    MIC_OSD_PID_FILE.unlink()
+            except Exception as e:
+                print(f"[WARN] Could not reap orphaned mic-osd daemon: {e}", flush=True)
         if self.config.get_setting('mic_osd_enabled', True):
             try:
                 from mic_osd import MicOSDRunner, NotificationPresenter
