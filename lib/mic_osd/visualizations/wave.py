@@ -43,6 +43,10 @@ class WaveVisualization(BaseVisualization):
         super().__init__()
         self.display = np.zeros(NUM_POINTS)
         self.pitch_display = np.full(NUM_POINTS, 0.5)
+        # Adaptive pitch range: one speaker uses a narrow slice of the
+        # 70–450Hz band, so stretch the observed range over the full palette.
+        self._pitch_lo = 0.45
+        self._pitch_hi = 0.55
         self._breath_phase = 0.0
         self._braid_phase = 0.0
         self._recent_max = 0.0
@@ -72,7 +76,16 @@ class WaveVisualization(BaseVisualization):
         if pitches is not None and len(pitches) > 1:
             idx = np.linspace(0, len(pitches) - 1, NUM_POINTS)
             pitch_target = np.interp(idx, np.arange(len(pitches)), pitches)
-            self.pitch_display += (pitch_target - self.pitch_display) * LIQUID_EASE
+
+            # Widen the tracked range instantly, shrink it slowly — after a
+            # few seconds of speech the palette spans the speaker's range.
+            p_min, p_max = float(pitch_target.min()), float(pitch_target.max())
+            self._pitch_lo = min(self._pitch_lo * 0.995 + p_min * 0.005, p_min)
+            self._pitch_hi = max(self._pitch_hi * 0.995 + p_max * 0.005, p_max)
+            span = max(self._pitch_hi - self._pitch_lo, 0.08)
+            stretched = np.clip((pitch_target - self._pitch_lo) / span, 0.0, 1.0)
+
+            self.pitch_display += (stretched - self.pitch_display) * LIQUID_EASE
 
         # Idle-breathing blend factor + phases
         self._recent_max = max(float(target.max()), self._recent_max * 0.94)
@@ -92,6 +105,7 @@ class WaveVisualization(BaseVisualization):
         self._collapsing = False
         self.display[:] = 0.0
         self.pitch_display[:] = 0.5
+        self._pitch_lo, self._pitch_hi = 0.45, 0.55
         self._recent_max = 0.0
 
     # ------------------------ Drawing ------------------------
@@ -184,9 +198,10 @@ class WaveVisualization(BaseVisualization):
 
             # Volume → cell inflation (gap closes when loud)
             inset = 1.0 - min(lvl * 1.6, 1.0)
-            # Pitch → hue; blended in by volume so silence stays cream
+            # Pitch → hue; full saturation already at normal speech volume,
+            # only near-silence stays cream
             pr, pg, pb = self._pitch_color(pitch)
-            t = min(lvl * 1.3, 1.0)
+            t = min(lvl * 3.5, 1.0)
             r = CREAM[0] + (pr - CREAM[0]) * t
             g = CREAM[1] + (pg - CREAM[1]) * t
             b = CREAM[2] + (pb - CREAM[2]) * t
@@ -196,9 +211,9 @@ class WaveVisualization(BaseVisualization):
             while y + cell > y_curve:
                 # Fade toward the curve top; checker dither for texture
                 depth = (baseline - y) / max(baseline - y_curve, 1e-6)
-                a = (0.16 + lvl * 0.10) * (1.0 - depth * 0.65)
+                a = (0.34 + lvl * 0.25) * (1.0 - depth * 0.55)
                 if (col + row) % 2:
-                    a *= 0.55
+                    a *= 0.6
                 cr.rectangle(x, max(y, y_curve), cell - inset, cell - inset)
                 cr.set_source_rgba(r, g, b, a * fade_x)
                 cr.fill()
