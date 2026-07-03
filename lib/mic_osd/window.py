@@ -127,15 +127,21 @@ class OSDWindow(Gtk.Window):
 
         self._draw_preview_text(cr, width, height)
     
-    def update(self, level: float, samples=None):
+    def update(self, level: float, samples=None, pitches=None):
         """
         Update the visualization with new audio data.
-        
+
         Args:
             level: Audio level (0.0 to 1.0)
             samples: Raw audio samples (optional)
+            pitches: Pitch history 0.0–1.0 (optional; only pitch-aware
+                visualizations consume it)
         """
-        self.visualization.update(level, samples)
+        try:
+            self.visualization.update(level, samples, pitches)
+        except TypeError:
+            # Visualization with the legacy 2-arg update signature
+            self.visualization.update(level, samples)
         self.drawing_area.queue_draw()
 
     def set_preview_text(self, text: str):

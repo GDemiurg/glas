@@ -47,23 +47,30 @@ class AudioMonitor:
         self.running = False
 
         self._levels = deque([0.0] * HISTORY_LEN, maxlen=HISTORY_LEN)
+        self._pitches = deque([0.5] * HISTORY_LEN, maxlen=HISTORY_LEN)
         self._current = 0.0
         self._thread = None
         self._stop = threading.Event()
         self._lock = threading.Lock()
 
-    def _read_level(self) -> float:
+    def _read_level(self):
+        """Read 'level [pitch]' from the daemon's file; pitch defaults to 0.5
+        (mid) for older single-value writers."""
         try:
-            return max(0.0, min(1.0, float(AUDIO_LEVEL_FILE.read_text().strip())))
-        except (FileNotFoundError, ValueError, OSError):
-            return 0.0
+            parts = AUDIO_LEVEL_FILE.read_text().split()
+            level = max(0.0, min(1.0, float(parts[0])))
+            pitch = max(0.0, min(1.0, float(parts[1]))) if len(parts) > 1 else 0.5
+            return level, pitch
+        except (FileNotFoundError, ValueError, OSError, IndexError):
+            return 0.0, 0.5
 
     def _poll_loop(self):
         while not self._stop.is_set():
-            level = self._read_level()
+            level, pitch = self._read_level()
             with self._lock:
                 self._current = level
                 self._levels.append(level)
+                self._pitches.append(pitch)
             if self.callback:
                 try:
                     self.callback(level, self.get_samples())
@@ -106,6 +113,11 @@ class AudioMonitor:
         """Rolling level history, oldest→newest (thread-safe)."""
         with self._lock:
             return np.array(self._levels)
+
+    def get_pitch_samples(self) -> np.ndarray:
+        """Rolling pitch history (0=low voice, 1=high), oldest→newest."""
+        with self._lock:
+            return np.array(self._pitches)
 
     def __enter__(self):
         self.start()

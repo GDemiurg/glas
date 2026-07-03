@@ -345,7 +345,9 @@ class MicOSD:
         if self.audio_monitor and self.window and self.visible:
             level = self.audio_monitor.get_level()
             samples = self.audio_monitor.get_samples()
-            self.window.update(level, samples)
+            pitches = (self.audio_monitor.get_pitch_samples()
+                       if hasattr(self.audio_monitor, 'get_pitch_samples') else None)
+            self.window.update(level, samples, pitches)
         return True  # Continue timer
 
     def _poll_state_file(self):

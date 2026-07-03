@@ -1897,10 +1897,11 @@ class hyprwhsprApp:
             try:
                 while self.is_recording and not self._audio_level_stop.is_set():
                     try:
-                        # Get scaled level for visualization (0.0-1.0)
+                        # Get scaled level + pitch for visualization (0.0-1.0 each)
                         level = self.audio_capture.get_audio_level()
+                        pitch = self.audio_capture.get_pitch_norm()
                         with open(AUDIO_LEVEL_FILE, 'w') as f:
-                            f.write(f'{level:.3f}')
+                            f.write(f'{level:.3f} {pitch:.3f}')
 
                         total_samples += 1
 

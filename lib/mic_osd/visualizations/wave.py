@@ -29,7 +29,11 @@ BRAID_CYCLES = 3.5         # how many strand crossings across the width
 BRAID_DRIFT_S = 5.0        # slow phase drift so the braid isn't static
 PIXEL_CELL = 5             # pixel-fill cell size (px, includes 1px gap)
 EDGE_FADE_FRAC = 0.16      # strands/fill fade in/out over this fraction of width
-ORANGE = (0.996, 0.502, 0.098)  # gruvbox orange #fe8019 — loud-pixel tint
+
+# Pitch → pixel tint ramp (low → mid → high voice)
+ORANGE = (0.996, 0.502, 0.098)  # gruvbox orange #fe8019 — low pitch
+YELLOW = (0.980, 0.741, 0.184)  # gruvbox yellow #fabd2f — mid pitch
+AQUA = (0.557, 0.753, 0.486)    # gruvbox aqua #8ec07c — high pitch
 
 
 class WaveVisualization(BaseVisualization):
@@ -38,6 +42,7 @@ class WaveVisualization(BaseVisualization):
     def __init__(self):
         super().__init__()
         self.display = np.zeros(NUM_POINTS)
+        self.pitch_display = np.full(NUM_POINTS, 0.5)
         self._breath_phase = 0.0
         self._braid_phase = 0.0
         self._recent_max = 0.0
@@ -46,7 +51,8 @@ class WaveVisualization(BaseVisualization):
 
     # ------------------------ Data ------------------------
 
-    def update(self, level: float, samples: np.ndarray = None):
+    def update(self, level: float, samples: np.ndarray = None,
+               pitches: np.ndarray = None):
         super().update(level, samples)
 
         if self._collapsing:
@@ -62,6 +68,11 @@ class WaveVisualization(BaseVisualization):
 
         # Liquid: eased glide toward the target in both directions
         self.display += (target - self.display) * LIQUID_EASE
+
+        if pitches is not None and len(pitches) > 1:
+            idx = np.linspace(0, len(pitches) - 1, NUM_POINTS)
+            pitch_target = np.interp(idx, np.arange(len(pitches)), pitches)
+            self.pitch_display += (pitch_target - self.pitch_display) * LIQUID_EASE
 
         # Idle-breathing blend factor + phases
         self._recent_max = max(float(target.max()), self._recent_max * 0.94)
@@ -80,6 +91,7 @@ class WaveVisualization(BaseVisualization):
         """Re-arm for the next show."""
         self._collapsing = False
         self.display[:] = 0.0
+        self.pitch_display[:] = 0.5
         self._recent_max = 0.0
 
     # ------------------------ Drawing ------------------------
@@ -126,7 +138,7 @@ class WaveVisualization(BaseVisualization):
         ys_a = ys + separation
         ys_b = ys - separation
 
-        self._draw_pixel_fill(cr, xs, ys, levels, baseline, width)
+        self._draw_pixel_fill(cr, xs, ys, levels, self.pitch_display, baseline, width)
 
         # Back strand (gray) first, cream strand on top; both fade out at
         # the left/right edges to match the feathered scrim.
@@ -139,27 +151,45 @@ class WaveVisualization(BaseVisualization):
         fade_px = width * EDGE_FADE_FRAC
         return max(0.0, min(1.0, x / fade_px, (width - x) / fade_px))
 
-    def _draw_pixel_fill(self, cr: cairo.Context, xs, ys, levels, baseline, width):
-        """Pixel-grid fill under the curve: retro checker-dithered cells that
-        react to volume — loud columns get fuller (bigger) cells tinted from
-        cream toward gruvbox orange. Spans the full curve, edge to edge."""
+    @staticmethod
+    def _pitch_color(pitch):
+        """Two-segment ramp: orange (low) → yellow (mid) → aqua (high)."""
+        if pitch <= 0.5:
+            t = pitch * 2.0
+            lo, hi = ORANGE, YELLOW
+        else:
+            t = (pitch - 0.5) * 2.0
+            lo, hi = YELLOW, AQUA
+        return (lo[0] + (hi[0] - lo[0]) * t,
+                lo[1] + (hi[1] - lo[1]) * t,
+                lo[2] + (hi[2] - lo[2]) * t)
+
+    def _draw_pixel_fill(self, cr: cairo.Context, xs, ys, levels, pitches,
+                         baseline, width):
+        """Pixel-grid fill under the curve: retro checker-dithered cells.
+        Volume drives cell size/alpha (loud = fuller, brighter); pitch
+        drives the tint — orange for a low voice, yellow mid, aqua high.
+        Quiet columns stay near cream. Spans the full curve, edge to edge."""
         x_left, x_right = xs[0], xs[-1]
         cell = PIXEL_CELL
         col = 0
         x = x_left
         while x < x_right:
             cx = x + cell / 2
-            # Curve height + local volume at this column
+            # Curve height + local volume/pitch at this column
             y_curve = float(np.interp(cx, xs, ys))
             lvl = float(np.interp(cx, xs, levels))
+            pitch = float(np.interp(cx, xs, pitches))
             fade_x = self._edge_fade(cx, width)
 
-            # Volume → cell inflation (gap closes) and cream→orange tint
-            inset = 1.0 - min(lvl * 1.6, 1.0)          # 1px gap → 0 when loud
+            # Volume → cell inflation (gap closes when loud)
+            inset = 1.0 - min(lvl * 1.6, 1.0)
+            # Pitch → hue; blended in by volume so silence stays cream
+            pr, pg, pb = self._pitch_color(pitch)
             t = min(lvl * 1.3, 1.0)
-            r = CREAM[0] + (ORANGE[0] - CREAM[0]) * t
-            g = CREAM[1] + (ORANGE[1] - CREAM[1]) * t
-            b = CREAM[2] + (ORANGE[2] - CREAM[2]) * t
+            r = CREAM[0] + (pr - CREAM[0]) * t
+            g = CREAM[1] + (pg - CREAM[1]) * t
+            b = CREAM[2] + (pb - CREAM[2]) * t
 
             row = 0
             y = baseline - cell

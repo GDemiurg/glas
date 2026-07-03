@@ -3,6 +3,7 @@ Audio capture module for hyprwhspr
 Handles real-time audio capture for speech recognition
 """
 
+import math
 import os
 import re
 import sys
@@ -43,6 +44,10 @@ class AudioCapture:
         self.current_level = 0.0
         # Rolling window of recent RMS values.
         self._level_history = deque(maxlen=8)
+        # Rolling window of recent raw chunks for pitch estimation
+        # (~8 × 1024 samples ≈ 0.5s at 16kHz).
+        self._recent_chunks = deque(maxlen=8)
+        self._last_pitch_norm = 0.5
         
         # Threading
         self.record_thread = None
@@ -931,9 +936,11 @@ class AudioCapture:
                         # Update current audio level for monitoring
                         self.current_level = np.sqrt(np.mean(audio_chunk**2))
                         self._level_history.append(self.current_level)
-                        
+
                         # Store audio data
-                        self.audio_data.append(audio_chunk.copy())
+                        chunk_copy = audio_chunk.copy()
+                        self.audio_data.append(chunk_copy)
+                        self._recent_chunks.append(chunk_copy)
                         
                         # Call streaming callback if set (for realtime backends)
                         if self.streaming_callback:
@@ -1153,6 +1160,37 @@ class AudioCapture:
     def get_audio_level(self) -> float:
         """Get the current audio level (0.0 to 1.0)"""
         return min(1.0, self.current_level * 10)  # Scale for better visualization
+
+    # Voice pitch search band (Hz) for get_pitch_norm
+    _PITCH_MIN_HZ = 70.0
+    _PITCH_MAX_HZ = 450.0
+
+    def get_pitch_norm(self) -> float:
+        """Dominant voice pitch as 0.0 (low) – 1.0 (high), log-scaled over
+        70–450 Hz. FFT over the last ~0.5s of capture; holds the previous
+        value during silence so the visualizer doesn't flicker. Called from
+        the level-monitor thread at ~20Hz — not from the audio callback."""
+        with self.lock:
+            if not self._recent_chunks or self.current_level < 5e-4:
+                return self._last_pitch_norm
+            buf = np.concatenate(list(self._recent_chunks))
+            rate = self.sample_rate
+
+        n = len(buf)
+        windowed = buf * np.hanning(n)
+        spectrum = np.abs(np.fft.rfft(windowed))
+        freqs = np.fft.rfftfreq(n, 1.0 / rate)
+
+        band = (freqs >= self._PITCH_MIN_HZ) & (freqs <= self._PITCH_MAX_HZ)
+        if not band.any() or spectrum[band].max() <= 0:
+            return self._last_pitch_norm
+
+        peak_hz = float(freqs[band][int(np.argmax(spectrum[band]))])
+        norm = math.log(peak_hz / self._PITCH_MIN_HZ) / math.log(
+            self._PITCH_MAX_HZ / self._PITCH_MIN_HZ)
+        # Smooth: pitch jumps octave-wise on noisy frames; ease toward it
+        self._last_pitch_norm += (max(0.0, min(1.0, norm)) - self._last_pitch_norm) * 0.4
+        return self._last_pitch_norm
 
     @property
     def rolling_avg_level(self) -> float:
