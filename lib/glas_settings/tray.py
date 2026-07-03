@@ -185,8 +185,10 @@ class GlasTray:
                 GLib.idle_add(self._on_menu_clicked, mid)
             invocation.return_value(None)
         elif method == 'AboutToShow':
-            self._bump_revision()
-            invocation.return_value(GLib.Variant('(b)', (True,)))
+            # Layout is computed fresh in every GetLayout call; answering
+            # "needs update" here makes Plasma refetch forever and render
+            # nothing, so always say no.
+            invocation.return_value(GLib.Variant('(b)', (False,)))
         else:
             invocation.return_value(None)
 

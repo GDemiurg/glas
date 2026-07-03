@@ -16,7 +16,9 @@ from gi.repository import Adw, Gdk, GLib, Gtk  # noqa: E402
 from .config_store import ConfigStore  # noqa: E402
 from . import system  # noqa: E402
 
-APP_ID = 'dev.demiurg.GlasSettings'
+# Must match the installed desktop file name (dev.demiurg.Glas.desktop) so
+# KDE/GNOME associate the window with the launcher entry and its icon.
+APP_ID = 'dev.demiurg.Glas'
 
 LANGS = ['auto', 'en', 'bg', 'de', 'fr', 'es', 'it', 'ru', 'uk', 'nl', 'pl', 'pt', 'tr']
 PASTE_MODES = ['auto', 'ctrl', 'ctrl_shift', 'super']
@@ -68,6 +70,40 @@ def _entry_row(title, value, on_change):
     row = Adw.EntryRow(title=title, text=str(value or ''))
     row.connect('apply', lambda r: on_change(r.get_text()))
     row.set_show_apply_button(True)
+    return row
+
+
+def _text_row(title, value, on_change, subtitle=None):
+    """Expander row with a proper multiline editor + Save button — for
+    prompts that don't fit a single-line entry."""
+    row = Adw.ExpanderRow(title=title)
+    if subtitle:
+        row.set_subtitle(subtitle)
+
+    view = Gtk.TextView(wrap_mode=Gtk.WrapMode.WORD_CHAR,
+                        top_margin=8, bottom_margin=8,
+                        left_margin=10, right_margin=10)
+    view.get_buffer().set_text(str(value or ''))
+    scroll = Gtk.ScrolledWindow(min_content_height=110, max_content_height=240,
+                                hexpand=True, propagate_natural_height=True)
+    scroll.set_child(view)
+
+    save = Gtk.Button(label='Save', halign=Gtk.Align.END,
+                      margin_top=6, margin_bottom=8, margin_end=8)
+    save.add_css_class('suggested-action')
+
+    def on_save(_b):
+        buf = view.get_buffer()
+        text = buf.get_text(buf.get_start_iter(), buf.get_end_iter(), False)
+        on_change(text.strip())
+
+    save.connect('clicked', on_save)
+
+    box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+    box.append(scroll)
+    box.append(save)
+    item = Gtk.ListBoxRow(child=box, activatable=False, selectable=False)
+    row.add_row(item)
     return row
 
 
@@ -290,9 +326,10 @@ class GlasWindow(Adw.PreferencesWindow):
         grp.add(_combo_row('Language', LANGS,
                            self.cfg.get('language') or 'auto',
                            lambda v: self._set('language', None if v == 'auto' else v)))
-        grp.add(_entry_row('Custom vocabulary / prompt',
-                           self.cfg.get('whisper_prompt', ''),
-                           lambda v: self._set('whisper_prompt', v)))
+        grp.add(_text_row('Custom vocabulary / prompt',
+                          self.cfg.get('whisper_prompt', ''),
+                          lambda v: self._set('whisper_prompt', v),
+                          subtitle='Names, domains, jargon — primes the decoder'))
         page.add(grp)
 
         grp = Adw.PreferencesGroup(
@@ -323,9 +360,10 @@ class GlasWindow(Adw.PreferencesWindow):
         grp.add(_spin_row('Temperature', float(self.cfg.get('llm_cleanup_temperature', 0.0)),
                           0, 1, 0.05, lambda v: self._set('llm_cleanup_temperature', v),
                           subtitle='0 = deterministic (recommended)'))
-        grp.add(_entry_row('Cleanup prompt (blank = built-in)',
-                           self.cfg.get('llm_cleanup_prompt') or '',
-                           lambda v: self._set('llm_cleanup_prompt', v or None)))
+        grp.add(_text_row('Cleanup prompt',
+                          self.cfg.get('llm_cleanup_prompt') or '',
+                          lambda v: self._set('llm_cleanup_prompt', v or None),
+                          subtitle='Blank = built-in (fix formatting, never rewrite)'))
         page.add(grp)
         self.add(page)
 

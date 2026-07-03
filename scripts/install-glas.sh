@@ -185,7 +185,7 @@ say "Installed systemd user unit 'hyprwhspr.service'"
 
 APPS_DIR="$HOME/.local/share/applications"
 mkdir -p "$APPS_DIR"
-sed "s|@ROOT@|$ROOT|g" "$ROOT/config/glas.desktop.in" > "$APPS_DIR/glas.desktop"
+sed "s|@ROOT@|$ROOT|g" "$ROOT/config/glas.desktop.in" > "$APPS_DIR/dev.demiurg.Glas.desktop"
 update-desktop-database "$APPS_DIR" 2>/dev/null || true
 
 ICON_DIR="$HOME/.local/share/icons/hicolor/scalable/apps"
