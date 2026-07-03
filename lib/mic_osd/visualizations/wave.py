@@ -101,10 +101,12 @@ class WaveVisualization(BaseVisualization):
     def draw_background(self, cr: cairo.Context, width: int, height: int):
         """Feathered scrim: layered inset pills build alpha toward the
         center, so the edge fades out instead of showing a hard corner."""
-        layers = 6
-        step = 5
-        # Total center alpha ≈ theme background alpha; each layer adds a slice
-        alpha = self.background_color[3] / layers if len(self.background_color) == 4 else 0.04
+        layers = 14
+        step = 2
+        # Layers composite multiplicatively: pick the per-layer alpha so the
+        # stack reaches the theme's background alpha at the center.
+        total = self.background_color[3] if len(self.background_color) == 4 else 0.24
+        alpha = 1.0 - (1.0 - total) ** (1.0 / layers)
         rgb = self.background_color[:3]
         for i in range(layers):
             inset = i * step

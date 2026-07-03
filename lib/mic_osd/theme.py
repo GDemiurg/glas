@@ -13,7 +13,7 @@ from pathlib import Path
 # scrim so the bars float over whatever is behind the overlay; border
 # disabled (None skips the stroke).
 DEFAULT_COLORS = {
-    'background-color': (0.114, 0.125, 0.129, 0.22),  # #1d2021 @ 22%
+    'background-color': (0.114, 0.125, 0.129, 0.60),  # #1d2021 @ 60% (center of feathered scrim)
     'border-color': None,                       # borderless
     'bar-color-left': (0.980, 0.741, 0.184),    # gruvbox yellow #fabd2f
     'bar-color-right': (0.996, 0.502, 0.098),   # gruvbox orange #fe8019
