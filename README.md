@@ -1,189 +1,159 @@
-<h1 align="center">
-    hyprwhspr
-</h1>
+<h1 align="center">Glas</h1>
 
 <p align="center">
-    <b>Native speech-to-text for Linux</b> - Fast, accurate and private system-wide dictation
+    <b>Local, private push-to-talk dictation for Linux</b><br>
+    Hold a key → speak → release → clean text at your cursor. Nothing leaves your machine.
 </p>
 
 <p align="center">
-    instant performance | Cohere / Parakeet / Whisper / Gemini / ElevenLabs / REST API | stylish visuals
+    <i>глас — Bulgarian for "voice". A self-hosted Wispr Flow alternative,<br>
+    forked from <a href="https://github.com/goodroot/hyprwhspr">hyprwhspr</a>.</i>
 </p>
 
- <p align="center">
-    <i>Supports Arch, Debian, Ubuntu, Fedora, openSUSE and more</i>
- </p>
-
- <p align="center">
-    <i> <a href="https://hyprwhspr.com">hyprwhspr.com</a></i>
- </p>
-
-https://github.com/user-attachments/assets/4c223e85-2916-494f-b7b1-766ce1bdc991
+<p align="center">
+    <!-- DEMO GIF PLACEHOLDER: hold F9 → wave overlay → text lands in editor -->
+    <img src="docs/screenshots/demo.gif" alt="demo (placeholder)" width="640">
+</p>
 
 ---
 
-- **Built for Linux** - Native AUR package for Arch, or use Debian/Ubuntu/Fedora/openSUSE
-- **Local, very fast defaults** - Instant, private and accurate performance via in-memory models
-- **Latest models** - Cohere Transcribe? Turbo-v3? Parakeet TDT V3? Latest and greatest
-- **GPU memory efficient** - Limit or zero memory usage easily, more for other local models
-- **onnx-asr for wild CPU speeds** - No GPU? Optimized for great speed on any hardware
-- **Translation** - Translate non-English to English with a single config
-- **REST API or websockets** - Secure, fast wires to top clouds like Gemini, ElevenLabs
-- **Themed visualizer** - Visualizes your voice, will automatch Omarchy theme
-- **Word overides and prompts** - Custom hot keys, common words, and more
-- **Multi-lingual** - Great performance in many languages
-- **Long form mode with saving** - Pause, think, resume, pause: submit... Bam!
-- **Auto-paste anywhere** - Instant paste into any active buffer, or even auto enter (optional)
-- **Audio ducking 🦆** - Reduces system volume on record (optional)
+## Features
 
----
+- **Push-to-talk**: hold a key (default `F9`), speak, release — text is injected at the cursor of whatever app has focus. Works in editors, browsers, terminals, Electron apps.
+- **Fully local**: whisper.cpp STT (CUDA-accelerated) + optional [Ollama](https://ollama.com) LLM cleanup. No cloud, no telemetry, no accounts.
+- **LLM cleanup** (toggle): a small local model (default `gemma3:4b`) fixes punctuation and capitalization and strips filler words — it never rewrites your meaning, and any failure falls back to the raw transcript.
+- **Live mic visualizer**: a click-through layer-shell overlay — braided wave driven by real capture amplitude, pixel field whose *density* follows your volume and *color* follows your pitch (FFT).
+- **Settings GUI + tray**: GTK4/libadwaita control panel for every option below, live daemon status, a test-dictation runner, and a system-tray icon with quick toggles.
+- **Voice commands**: "new line", "period", "comma", "open paren"… plus your own word overrides (fix mishears, force spellings — applied before *and* after LLM cleanup).
+- **Custom vocabulary**: prime whisper with your names/domains/jargon via its initial prompt.
 
-**Why hyprwhspr?** There are a lotta dictation apps. This one is designed to work great for most people, and in particular those with highest end machines. If you've a recent Nvidia card, hyprwhspr is designed from the ground up for the **best possible accuracy and speed**. Other setups will run as well as they can on the hardware you bring. It's also actively maintained, and fully featured. Works on  anything with Wayland.
+## Architecture
 
----
-
-## Quick start
-
-### Prerequisites
-
-- **Linux** with systemd (Arch, Debian, Ubuntu, Fedora, openSUSE, etc.)
-- **Requires a Wayland session** (GNOME, KDE Plasma Wayland, Sway, Hyprland)
-
-- **Waybar** (optional, for status bar)
-- **gtk4 + PyCairo** (optional, for visualizer)
-- **NVIDIA GPU** (optional, for CUDA acceleration)
-- **AMD/Intel GPU / APU** (optional, for Vulkan acceleration)
-
-### Quick start (Arch Linux)
-
-On the AUR:
-
-```bash
-# Install for stable
-yay -S hyprwhspr
-
-# Or install for bleeding edge
-yay -S hyprwhspr-git
+```
+            hold hotkey                    release
+                 │                            │
+   ┌─────────────▼────────────────────────────▼──────────────┐
+   │  Glas daemon (Python, systemd --user service)            │
+   │                                                           │
+   │  evdev hotkey ──► PipeWire capture ──► whisper.cpp        │
+   │  (compositor-     (sounddevice)        (pywhispercpp,     │
+   │   agnostic)            │               CUDA/CPU — the     │
+   │                        │               ONLY STT engine)   │
+   │                        ▼                    │             │
+   │                  mic-osd overlay            ▼             │
+   │                  (GTK4 layer-shell,   LLM cleanup         │
+   │                   reads level+pitch   (Ollama /api/       │
+   │                   from the daemon —   generate — text     │
+   │                   no second mic       polish ONLY:        │
+   │                   stream)             Ollama does NOT     │
+   │                                       and CANNOT do STT)  │
+   │                                            │              │
+   │                              clipboard + paste keystroke  │
+   │                              (wl-copy → ydotool / wtype)  │
+   └───────────────────────────────────────────────────────────┘
 ```
 
-Then run the auto installer, or perform your own:
+Two separate models, two separate jobs: **whisper.cpp turns audio into text; Ollama only polishes text**. Turning cleanup off wires the raw transcript straight to injection.
 
-```bash
-# Run interactive setup
-hyprwhspr setup
+## Supported environments
+
+| Environment | Dictation | Visualizer overlay |
+|---|---|---|
+| ✅ KDE Plasma (Wayland) | full | full (primary target) |
+| ✅ Hyprland / Sway / wlroots | full | full |
+| ⚠️ GNOME (Wayland) | full | no (no layer-shell) — falls back to desktop notifications |
+| ⚠️ X11 | untested | no |
+| ❌ Windows / macOS | no | no — Linux-only by design |
+
+## Install
+
+```sh
+git clone <this-repo> && cd glas
+sh scripts/install-glas.sh          # add --cpu to skip the CUDA build
 ```
 
-**The setup will walk you through the process:**
+The installer detects your package manager (pacman/apt/dnf), checks every dependency, and **prints the exact sudo commands it can't run itself** — typically:
 
-1. ✅ Configure transcription backend (Cohere Transcribe, Parakeet TDT V3, Whisper, REST API, or Realtime WebSocket)
-2. ✅ Download models
-3. ✅ Configure themed visualizer for maximum coolness (optional)
-4. ✅ Configure Waybar integration (optional)
-5. ✅ Set up systemd user services 
-6. ✅ Set up permissions
-7. ✅ Validate installation
+```sh
+# system packages (once)
+sudo pacman -S --needed python python-gobject python-cairo gtk4 gtk4-layer-shell libadwaita ydotool wl-clipboard pipewire portaudio cmake
 
-### First use
-
-> Ensure your microphone of choice is available in audio settings!
-
-1. **Log out and back in** (for group permissions)
-2. **Press `Super+Alt+D`** to start dictation - _beep!_
-3. **Speak naturally**
-4. **Press `Super+Alt+D`** again to stop dictation - _boop!_
-5. **Bam!** Text appears in active buffer!
-
-> **What you'll see while recording:** on layer-shell compositors (Hyprland, Sway, niri, KDE) the animated mic OSD overlay; on GNOME/Mutter you may need to make additional changes. See [Themed visualizer](docs/CONFIGURATION.md#themed-visualizer) for details.
-
-Any snags, please [create an issue](https://github.com/goodroot/hyprwhspr/issues/new/choose).
-
-### Updating
-
-```bash
-# Update via your AUR helper
-yay -Syu hyprwhspr
-
-# If needed, re-run setup (idempotent)
-hyprwhspr setup
+# input access: the hotkey listener reads /dev/input, ydotool writes /dev/uinput
+sudo usermod -aG input $USER        # permanent, needs re-login
+echo 'KERNEL=="uinput", GROUP="input", MODE="0660", OPTIONS+="static_node=uinput"' | sudo tee /etc/udev/rules.d/99-glas-uinput.rules
+sudo udevadm control --reload && sudo udevadm trigger --sysname-match=uinput
+# grant access for the CURRENT session (no re-login needed):
+sudo setfacl -m u:$USER:rw /dev/uinput /dev/input/event*
 ```
 
-### Other Linux distros
+Then:
 
-hyprwhspr can run on any Linux distribution with systemd.
-
-```bash
-# Clone the repo
-git clone https://github.com/goodroot/hyprwhspr.git
-cd hyprwhspr
-
-# Install dependencies for your distro (Ubuntu, Debian, Fedora, openSUSE)
-./scripts/install-deps.sh
-
-# Run interactive setup
-./bin/hyprwhspr setup
+```sh
+systemctl --user start hyprwhspr    # start the daemon
+systemctl --user enable hyprwhspr   # optional: autostart at login
 ```
 
-After setup, log out and back in for group permissions, then:
+Launch **Glas** from your app menu for settings, hold **F9** to dictate.
 
-```bash
-hyprwhspr status
-```
+> **GPU**: with an NVIDIA card + CUDA toolkit the installer builds whisper bindings from source (PyPI wheels are CPU-only) and patches the vendored `libcuda` (a symlink to the system `libcuda.so.1` — the bundled copy breaks CUDA init). AMD/Intel or no GPU: CPU decoding via `--cpu`, still fast with `small`.
+>
+> **Cleanup**: install [Ollama](https://ollama.com/download) and `ollama pull gemma3:4b`, then enable cleanup in settings. Without it Glas types the raw whisper transcript.
 
-> Non-Arch distro support is new - please report any snags!
+## Configuration
 
-### CLI commands
+Everything lives in `~/.config/hyprwhspr/config.json` and is editable in the GUI:
 
-After installation, use the `hyprwhspr` CLI to manage your installation:
+| Setting (GUI) | Config key | Notes |
+|---|---|---|
+| Input device | `audio_device_name` | substring match; unset = system default |
+| Hotkey | `primary_shortcut` | e.g. `F9`, `SUPER+ALT+D`. Use a non-typing key on KDE |
+| Recording mode | `recording_mode` | `push_to_talk` / `toggle` / `auto` / `continuous` |
+| Whisper model | `model` | `tiny`…`large-v3`, `distil-large-v3`; ✓ = on disk, others auto-download |
+| Language | `language` | `null` = auto-detect. `distil-large-v3` is English-only |
+| Custom vocabulary | `whisper_prompt` | names/jargon fed to whisper as initial prompt |
+| Threads | `threads` | CPU decoding threads |
+| Cleanup on/off | `llm_cleanup` | **the toggle** — off = raw transcript |
+| Cleanup model | `llm_cleanup_model` | any Ollama model (`gemma3:4b`, `qwen2.5:3b`, …) |
+| Endpoint | `llm_cleanup_url` | default `http://localhost:11434` |
+| Timeout | `llm_cleanup_timeout` | seconds before falling back to raw |
+| Temperature | `llm_cleanup_temperature` | 0 = deterministic (recommended) |
+| Cleanup prompt | `llm_cleanup_prompt` | `null` = built-in (fix formatting, never rewrite) |
+| Paste chord | `paste_mode` | `auto`: terminals get Ctrl+Shift+V |
+| Clear clipboard | `clipboard_behavior` + `clipboard_clear_delay` | |
+| Auto-submit | `auto_submit` | press Enter after paste |
+| Overlay on/off | `mic_osd_enabled` | headless mode when `false` |
+| Overlay style | `mic_osd_style` | `wave` / `waveform` / `vu_meter` |
+| Overlay geometry | `mic_osd_width/height/margin/anchor` | anchored bottom or top, centered |
+| Overlay resolution | `mic_osd_bars` | curve points / bar count |
+| Overlay colors | `mic_osd_colors` | name→hex overrides of the gruvbox palette |
+| Spoken symbols | `symbol_replacements` | "new line" → ↵, "period" → `.` … |
+| Filler filter | `filter_filler_words` + `filler_words` | regex removal without the LLM |
+| Word overrides | `word_overrides` | phrase→replacement, applied before *and* after cleanup |
 
-- `hyprwhspr setup` - Interactive initial setup
-- `hyprwhspr config` - Manage configuration (`show` / `show --all` / `edit` / `secondary-shortcut`)
-- `hyprwhspr model` - Manage models (`download` / `list` / `status` / `unload` / `reload`)
-- `hyprwhspr record` - External hotkey control (`start` / `stop` / `toggle` / `cancel` / `capture` / `status`)
-- `hyprwhspr status` - Overall status check
-- `hyprwhspr validate` - Validate installation
-- `hyprwhspr test` - Test microphone and transcription end-to-end
-- `hyprwhspr keyboard` - List/test keyboard devices (`list` / `test`)
-- `hyprwhspr waybar` - Manage Waybar integration
-- `hyprwhspr mic-osd` - Enable/disable the mic OSD (`enable` / `disable` / `status`)
-- `hyprwhspr systemd` - Manage systemd services
-- `hyprwhspr uninstall` - Remove hyprwhspr and user data
+## Troubleshooting
 
-For the full command reference, see the **[Configuration guide](docs/CONFIGURATION.md)**.
+- **Typing pastes nothing (KDE)** — KWin has no `zwp_virtual_keyboard_v1`, so `wtype` cannot work; Glas detects this and uses `ydotool` automatically. Make sure `/dev/uinput` is accessible (see install).
+- **Hotkey does nothing** — you're not in the `input` group yet (needs re-login), or the session-scoped `setfacl` wasn't run.
+- **Held letter keys spam into apps (KDE)** — nothing swallows a letter combo on KDE; use a non-typing key like `F9`. Do **not** set `grab_keys: true` — the exclusive-grab re-emit path can drop keystrokes.
+- **CUDA "initialization error"** — the pywhispercpp build vendored `libcuda`. Fix: replace `…/site-packages/pywhispercpp.libs/libcuda-*.so.*` with a symlink to `/usr/lib/libcuda.so.1` (the installer does this).
+- **Empty transcripts / "Thank you."** — whisper hallucinating on silence; your mic isn't the one Glas records from. Pick the right input device in settings.
+- **First cleaned dictation is slow** — Ollama cold-loads the model (~25s); the daemon pre-warms it at startup and `keep_alive` keeps it hot for 30min between dictations.
+- **Overlay not showing** — your compositor lacks layer-shell (GNOME) or `gtk4-layer-shell` isn't installed; dictation is unaffected.
+- **Live logs** — `journalctl --user -u hyprwhspr -f` (`[PIPELINE]` lines show raw → preprocessed → cleaned per dictation).
 
-## Documentation
+## Measured performance
 
-For full configuration and customization, see the **[Configuration guide](docs/CONFIGURATION.md)**.
+RTX 3060 Ti, 11s speech clip: STT 0.17s (`distil-large-v3`) / 0.11s (`small`); gemma3:4b cleanup 0.68s hot. **End-to-end ≈0.9s cleaned, ≈0.2s raw.** Details: [docs/LATENCY.md](docs/LATENCY.md).
 
-- [Minimal configuration](docs/CONFIGURATION.md#minimal-configuration)
-- [Recording modes](docs/CONFIGURATION.md#recording-modes) -- toggle, push-to-talk, auto, long-form
-- [Custom hotkeys](docs/CONFIGURATION.md#custom-hotkeys) -- key support, secondary shortcuts, Hyprland bindings
-- [Backends](docs/CONFIGURATION.md#backends) -- Cohere Transcribe, Parakeet, Whisper, REST API, Realtime WebSocket
-- [GPU resource management](docs/CONFIGURATION.md#gpu-resource-management) -- unload/reload model to free VRAM
-- [Audio and visual feedback](docs/CONFIGURATION.md#audio-and-visual-feedback) -- visualizer, audio feedback, ducking
-- [Text processing](docs/CONFIGURATION.md#text-processing) -- word overrides, filler words, symbol replacements
-- [Paste and clipboard behavior](docs/CONFIGURATION.md#paste-and-clipboard-behavior) -- paste mode, per-app paste keys, non-QWERTY, auto-submit
-- [Integrations](docs/CONFIGURATION.md#integrations) -- Waybar, Hyprland bindings, external hotkey systems
-- [Troubleshooting](docs/CONFIGURATION.md#troubleshooting)
+## Screenshots
 
-## Getting help
+<!-- SCREENSHOT PLACEHOLDERS -->
+| Settings GUI | Wave overlay |
+|---|---|
+| ![settings](docs/screenshots/settings.png) | ![overlay](docs/screenshots/overlay.png) |
 
-1. **Check logs**: `journalctl --user -u hyprwhspr.service`
-2. **Verify permissions**: Run the permissions fix script
-3. **Test components**: Check ydotool, audio devices, whisper.cpp
-4. **Report issues**: [Create an issue](https://github.com/goodroot/hyprwhspr/issues/new/choose) - logging info helpful!
+## Credits & license
 
-## License
+Glas is a fork of [**hyprwhspr**](https://github.com/goodroot/hyprwhspr) by [goodroot](https://github.com/goodroot) — the daemon core (hotkeys, capture, whisper integration, injection, OSD scaffolding) is theirs. This fork adds the Ollama cleanup stage, the pitch/volume-reactive wave visualizer, KDE/KWin fixes, the settings GUI + tray, and the standalone packaging.
 
-MIT License - see [LICENSE](LICENSE) file.
-
-## Contributing
-
-Create an issue, happy to help!  
-
-For pull requests, also best to start with an issue.
-
-If you want, compute credits from [opub.dev](https://opub.dev/github/goodroot/hyprwhspr) are always welcome!
-
----
-
-**Built with ❤️ in 🇨🇦**
+MIT — see [LICENSE](LICENSE) (© 2025 goodroot, with modifications © 2026 Georgi Demirov).
