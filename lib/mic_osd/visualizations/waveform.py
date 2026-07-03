@@ -45,6 +45,11 @@ class WaveformVisualization(BaseVisualization):
         # State manager for visualizer states (recording, paused, processing, etc.)
         self.state_manager = StateManager()
 
+    def set_resolution(self, bars: int):
+        """Set the bar count (config: mic_osd_bars). Call before use."""
+        self.num_bars = max(8, min(128, int(bars)))
+        self.bar_heights = np.zeros(self.num_bars)
+
         # Elapsed time tracking for long-form mode
         self._recording_start_time = None
         self._elapsed_seconds = 0.0

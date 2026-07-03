@@ -595,6 +595,55 @@
       "default": true,
       "description": "Show recording status during recording. Shown as the animated overlay on layer-shell compositors (Hyprland, Sway, niri, KDE), or as desktop notifications on GNOME/Mutter (which has no layer-shell support)."
     },
+    "mic_osd_style": {
+      "type": "string",
+      "enum": [
+        "wave",
+        "waveform",
+        "vu_meter"
+      ],
+      "default": "wave",
+      "description": "Overlay visualization style"
+    },
+    "mic_osd_width": {
+      "type": "integer",
+      "minimum": 120,
+      "default": 400,
+      "description": "Overlay width in px"
+    },
+    "mic_osd_height": {
+      "type": "integer",
+      "minimum": 40,
+      "default": 68,
+      "description": "Overlay height in px"
+    },
+    "mic_osd_margin": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 130,
+      "description": "Distance in px from the anchored screen edge"
+    },
+    "mic_osd_anchor": {
+      "type": "string",
+      "enum": [
+        "bottom",
+        "top"
+      ],
+      "default": "bottom",
+      "description": "Screen edge the overlay anchors to (horizontally centered)"
+    },
+    "mic_osd_bars": {
+      "type": "integer",
+      "minimum": 8,
+      "maximum": 128,
+      "default": 48,
+      "description": "Wave curve resolution / waveform bar count"
+    },
+    "mic_osd_colors": {
+      "type": "object",
+      "default": {},
+      "description": "Overlay color overrides as name->hex, e.g. {\"bar-color-left\": \"#fabd2f\"}"
+    },
     "notification_timeout_ms": {
       "type": "integer",
       "minimum": 0,

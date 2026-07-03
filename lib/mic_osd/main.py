@@ -59,7 +59,8 @@ class MicOSD:
     Mic-osd application with show/hide support.
     """
     
-    def __init__(self, visualization="waveform", width=400, height=68, daemon=False):
+    def __init__(self, visualization="waveform", width=400, height=68, daemon=False,
+                 margin=130, anchor="bottom", bars=48):
         self.main_loop = None
         self.app = None
         self.audio_monitor = None
@@ -77,8 +78,12 @@ class MicOSD:
         # Get visualization
         viz_class = VISUALIZATIONS.get(visualization, VISUALIZATIONS["waveform"])
         self.visualization = viz_class()
+        if hasattr(self.visualization, 'set_resolution'):
+            self.visualization.set_resolution(bars)
         self.width = width
         self.height = height
+        self.margin = margin
+        self.anchor = anchor
 
     def run(self):
         """Start the OSD and run until killed."""
@@ -129,7 +134,7 @@ class MicOSD:
         
         load_css()
 
-        self.window = OSDWindow(self.visualization, self.width, self.height)
+        self.window = OSDWindow(self.visualization, self.width, self.height, margin=self.margin, anchor=self.anchor)
         app.add_window(self.window)
 
         self.theme_watcher = ThemeWatcher(on_theme_changed=self._on_theme_changed)
@@ -145,7 +150,7 @@ class MicOSD:
         load_css()
 
         # Create window (hidden in daemon mode)
-        self.window = OSDWindow(self.visualization, self.width, self.height)
+        self.window = OSDWindow(self.visualization, self.width, self.height, margin=self.margin, anchor=self.anchor)
 
         # Start theme watcher for live theme updates
         self.theme_watcher = ThemeWatcher(on_theme_changed=self._on_theme_changed)
@@ -516,6 +521,24 @@ def main():
         action="store_true",
         help="Run as daemon (start hidden, show on SIGUSR1, hide on SIGUSR2)"
     )
+    parser.add_argument(
+        "-m", "--margin",
+        type=int,
+        default=130,
+        help="Distance in px from the anchored screen edge (default: 130)"
+    )
+    parser.add_argument(
+        "-a", "--anchor",
+        choices=["bottom", "top"],
+        default="bottom",
+        help="Screen edge to anchor to, horizontally centered (default: bottom)"
+    )
+    parser.add_argument(
+        "-b", "--bars",
+        type=int,
+        default=48,
+        help="Wave curve resolution / waveform bar count (default: 48)"
+    )
     args = parser.parse_args()
 
     if _MIC_OSD_IMPORT_ERROR is not None:
@@ -533,7 +556,10 @@ def main():
         visualization=args.viz,
         width=args.width,
         height=args.height,
-        daemon=args.daemon
+        daemon=args.daemon,
+        margin=args.margin,
+        anchor=args.anchor,
+        bars=args.bars,
     )
     _app.run()
     

@@ -27,6 +27,31 @@ DEFAULT_COLORS = {
 }
 
 
+def _env_color_overrides() -> dict:
+    """Color overrides from HYPRWHSPR_OSD_COLORS (JSON name→hex), set by
+    MicOSDRunner from the config's mic_osd_colors. Invalid entries ignored."""
+    import json
+    raw = os.environ.get('HYPRWHSPR_OSD_COLORS')
+    if not raw:
+        return {}
+    overrides = {}
+    try:
+        for name, value in json.loads(raw).items():
+            if name not in DEFAULT_COLORS or not isinstance(value, str):
+                continue
+            rgb = hex_to_rgb(value)
+            if rgb:
+                # Preserve alpha from the default where it has one
+                default = DEFAULT_COLORS.get(name)
+                if default and len(default) == 4:
+                    overrides[name] = (*rgb, default[3])
+                else:
+                    overrides[name] = rgb
+    except (ValueError, TypeError):
+        pass
+    return overrides
+
+
 def hex_to_rgb(hex_color: str) -> tuple:
     """
     Convert hex color to RGB tuple (0.0-1.0 range).
@@ -55,6 +80,14 @@ def hex_to_rgb(hex_color: str) -> tuple:
 
 
 def load_theme() -> dict:
+    """Load theme colors: files first, then user config overrides on top
+    (HYPRWHSPR_OSD_COLORS env, set by the runner from mic_osd_colors)."""
+    colors = _load_theme_files()
+    colors.update(_env_color_overrides())
+    return colors
+
+
+def _load_theme_files() -> dict:
     """
     Load theme colors from Omarchy theme file.
     

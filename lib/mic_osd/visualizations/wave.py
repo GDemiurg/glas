@@ -1,11 +1,12 @@
 """
-Wave visualization — braided cream strands over a low-poly fill.
+Wave visualization — braided strands over a volume/pitch-reactive pixel grid.
 
 Two smooth curves from the same level history, phase-offset so they weave
-around each other along the envelope. Underneath: sharp triangular facets
-(low-poly fill) down to the baseline; on top: node dots riding the center
-curve and short-lived diamond sparks on loud peaks. Gruvbox cream/gray
-monochrome. Breathes gently while silent; collapses to the baseline on
+around each other along the envelope. Underneath: a pixel-grid fill whose
+DENSITY follows volume (sparse when quiet, packed when loud) and whose tint
+follows pitch (orange low → yellow mid → aqua high, auto-ranged to the
+speaker). The back strand carries the same palette; the front strand stays
+gruvbox cream. Breathes gently while silent; collapses to the baseline on
 release (the OSD hides ~160ms after begin_collapse()).
 """
 
@@ -41,6 +42,7 @@ class WaveVisualization(BaseVisualization):
 
     def __init__(self):
         super().__init__()
+        self.num_points = NUM_POINTS
         self.display = np.zeros(NUM_POINTS)
         self.pitch_display = np.full(NUM_POINTS, 0.5)
         # Adaptive pitch range: one speaker uses a narrow slice of the
@@ -65,16 +67,16 @@ class WaveVisualization(BaseVisualization):
             return
 
         if samples is not None and len(samples) > 1:
-            idx = np.linspace(0, len(samples) - 1, NUM_POINTS)
+            idx = np.linspace(0, len(samples) - 1, self.num_points)
             target = np.interp(idx, np.arange(len(samples)), samples)
         else:
-            target = np.zeros(NUM_POINTS)
+            target = np.zeros(self.num_points)
 
         # Liquid: eased glide toward the target in both directions
         self.display += (target - self.display) * LIQUID_EASE
 
         if pitches is not None and len(pitches) > 1:
-            idx = np.linspace(0, len(pitches) - 1, NUM_POINTS)
+            idx = np.linspace(0, len(pitches) - 1, self.num_points)
             pitch_target = np.interp(idx, np.arange(len(pitches)), pitches)
 
             # Widen the tracked range instantly, shrink it slowly — after a
@@ -95,6 +97,13 @@ class WaveVisualization(BaseVisualization):
                              0.016 * (2 * math.pi / BRAID_DRIFT_S)) % (2 * math.pi)
 
         self.state_manager.update()
+
+    def set_resolution(self, points: int):
+        """Set the curve resolution (config: mic_osd_bars). Call before use."""
+        points = max(8, min(128, int(points)))
+        self.num_points = points
+        self.display = np.zeros(points)
+        self.pitch_display = np.full(points, 0.5)
 
     def begin_collapse(self):
         """Start the release animation — the wave sinks into the baseline."""
@@ -140,13 +149,13 @@ class WaveVisualization(BaseVisualization):
         quiet = max(0.0, 1.0 - self._recent_max / QUIET_LEVEL) if not self._collapsing else 0.0
         breath = (0.5 + 0.5 * math.sin(self._breath_phase)) * 0.045 * quiet
 
-        xs = np.linspace(pad_x, width - pad_x, NUM_POINTS)
+        xs = np.linspace(pad_x, width - pad_x, self.num_points)
         levels = np.clip(self.display + breath, 0.0, 1.0)
         ys = baseline - levels * max_rise
 
         # Braid offset: strands separate more where the wave is loud,
         # crossing where the sine passes zero. Slow drift keeps it alive.
-        t = np.linspace(0, 1, NUM_POINTS)
+        t = np.linspace(0, 1, self.num_points)
         weave = np.sin(t * 2 * math.pi * BRAID_CYCLES + self._braid_phase)
         separation = weave * (2.0 + levels * 9.0)
         ys_a = ys + separation

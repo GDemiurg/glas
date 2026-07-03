@@ -97,6 +97,15 @@ class ConfigManager:
             'llm_cleanup_timeout': 8.0,   # seconds; on timeout raw text is used
             'llm_cleanup_keep_alive': '30m',  # keep model hot in Ollama between dictations
             'llm_cleanup_prompt': None,   # null = built-in instruction (see llm_cleanup.py)
+            # Mic-OSD overlay appearance (read by MicOSDRunner at spawn;
+            # changes need a daemon restart)
+            'mic_osd_style': 'wave',      # 'wave' | 'waveform' | 'vu_meter'
+            'mic_osd_width': 400,
+            'mic_osd_height': 68,
+            'mic_osd_margin': 130,        # px from the anchored screen edge
+            'mic_osd_anchor': 'bottom',   # 'bottom' | 'top'
+            'mic_osd_bars': 48,           # wave curve resolution / waveform bar count
+            'mic_osd_colors': {},         # theme overrides, e.g. {"bar-color-left": "#fabd2f"}
             'clipboard_behavior': False,  # Boolean: true = clear clipboard after delay, false = keep (current behavior)
             'clipboard_clear_delay': 5.0,  # Float: seconds to wait before clearing clipboard (only used if clipboard_behavior is true)
             # Values: "super" | "ctrl_shift" | "ctrl" | null (auto-detect)

@@ -16,10 +16,10 @@ from pathlib import Path
 
 # Import paths
 try:
-    from ..src.paths import MIC_OSD_PID_FILE, VISUALIZER_STATE_FILE, TRANSCRIPT_PREVIEW_FILE
+    from ..src.paths import MIC_OSD_PID_FILE, VISUALIZER_STATE_FILE, TRANSCRIPT_PREVIEW_FILE, CONFIG_FILE
 except ImportError:
     # Fallback for direct execution
-    from src.paths import MIC_OSD_PID_FILE, VISUALIZER_STATE_FILE, TRANSCRIPT_PREVIEW_FILE
+    from src.paths import MIC_OSD_PID_FILE, VISUALIZER_STATE_FILE, TRANSCRIPT_PREVIEW_FILE, CONFIG_FILE
 
 
 class MicOSDRunner:
@@ -171,6 +171,28 @@ class MicOSDRunner:
                 except Exception:
                     pass
 
+        # Overlay appearance from config.json (best-effort — defaults on any error)
+        osd_args = ['--daemon']
+        colors_env = None
+        try:
+            import json as _json
+            cfg = _json.loads(CONFIG_FILE.read_text()) if CONFIG_FILE.exists() else {}
+            style = cfg.get('mic_osd_style', 'wave')
+            if style in ('wave', 'waveform', 'vu_meter'):
+                osd_args += ['--viz', style]
+            osd_args += ['--width', str(int(cfg.get('mic_osd_width', 400)))]
+            osd_args += ['--height', str(int(cfg.get('mic_osd_height', 68)))]
+            osd_args += ['--margin', str(int(cfg.get('mic_osd_margin', 130)))]
+            anchor = cfg.get('mic_osd_anchor', 'bottom')
+            if anchor in ('bottom', 'top'):
+                osd_args += ['--anchor', anchor]
+            osd_args += ['--bars', str(int(cfg.get('mic_osd_bars', 48)))]
+            colors = cfg.get('mic_osd_colors') or {}
+            if isinstance(colors, dict) and colors:
+                colors_env = _json.dumps(colors)
+        except Exception as e:
+            print(f"[MIC-OSD] Could not read overlay config, using defaults: {e}", flush=True)
+
         # Build the Python code to run
         lib_dir = self._mic_osd_dir.parent
         code = f"""
@@ -184,7 +206,7 @@ signal.signal(signal.SIGUSR2, signal.SIG_IGN)
 import sys
 sys.path.insert(0, '{lib_dir}')
 from mic_osd.main import main
-sys.argv = ['mic-osd', '--daemon']
+sys.argv = ['mic-osd'] + {osd_args!r}
 sys.exit(main())
 """
 
@@ -210,6 +232,8 @@ sys.exit(main())
         if lib_path:
             env['LD_PRELOAD'] = lib_path
         env['HYPRWHSPR_MIC_OSD_DAEMON'] = '1'
+        if colors_env:
+            env['HYPRWHSPR_OSD_COLORS'] = colors_env
 
         try:
             python_cmd = sys.executable or 'python3'

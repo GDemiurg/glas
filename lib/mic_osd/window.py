@@ -36,7 +36,7 @@ class OSDWindow(Gtk.Window):
     PREVIEW_WORD_LIMIT = 14
     PREVIEW_TIMER_RESERVE = 58
     
-    def __init__(self, visualization, width=300, height=60):
+    def __init__(self, visualization, width=300, height=60, margin=130, anchor="bottom"):
         """
         Initialize the OSD window.
         
@@ -51,6 +51,8 @@ class OSDWindow(Gtk.Window):
         self._width = width
         self._height = height
         self._preview_text = ""
+        self._margin = max(0, int(margin))
+        self._anchor = anchor if anchor in ("bottom", "top") else "bottom"
         self._visualizer_state = "recording"
         
         # Layer shell MUST be initialized immediately after window creation
@@ -77,14 +79,16 @@ class OSDWindow(Gtk.Window):
         # Put on overlay layer (above everything)
         Gtk4LayerShell.set_layer(self, Gtk4LayerShell.Layer.OVERLAY)
         
-        # Anchor to bottom only (centers horizontally)
-        Gtk4LayerShell.set_anchor(self, Gtk4LayerShell.Edge.BOTTOM, True)
+        # Anchor to one edge only (centers horizontally)
+        edge = (Gtk4LayerShell.Edge.TOP if self._anchor == "top"
+                else Gtk4LayerShell.Edge.BOTTOM)
+        Gtk4LayerShell.set_anchor(self, Gtk4LayerShell.Edge.BOTTOM, edge == Gtk4LayerShell.Edge.BOTTOM)
+        Gtk4LayerShell.set_anchor(self, Gtk4LayerShell.Edge.TOP, edge == Gtk4LayerShell.Edge.TOP)
         Gtk4LayerShell.set_anchor(self, Gtk4LayerShell.Edge.LEFT, False)
         Gtk4LayerShell.set_anchor(self, Gtk4LayerShell.Edge.RIGHT, False)
-        Gtk4LayerShell.set_anchor(self, Gtk4LayerShell.Edge.TOP, False)
-        
-        # Margin from bottom
-        Gtk4LayerShell.set_margin(self, Gtk4LayerShell.Edge.BOTTOM, 130)
+
+        # Margin from the anchored edge
+        Gtk4LayerShell.set_margin(self, edge, self._margin)
         
         # Don't reserve exclusive space
         Gtk4LayerShell.set_exclusive_zone(self, -1)
