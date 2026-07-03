@@ -98,6 +98,25 @@ class WaveVisualization(BaseVisualization):
 
     # ------------------------ Drawing ------------------------
 
+    def draw_background(self, cr: cairo.Context, width: int, height: int):
+        """Feathered scrim: layered inset pills build alpha toward the
+        center, so the edge fades out instead of showing a hard corner."""
+        layers = 6
+        step = 5
+        # Total center alpha ≈ theme background alpha; each layer adds a slice
+        alpha = self.background_color[3] / layers if len(self.background_color) == 4 else 0.04
+        rgb = self.background_color[:3]
+        for i in range(layers):
+            inset = i * step
+            w = width - inset * 2
+            h = height - inset * 2
+            if w <= 0 or h <= 0:
+                break
+            r = h / 2  # full pill — no visible corners at any inset
+            self._rounded_rect(cr, inset, inset, w, h, r)
+            cr.set_source_rgba(*rgb, alpha)
+            cr.fill()
+
     def draw(self, cr: cairo.Context, width: int, height: int):
         pad_x = 18
         pad_top = 12
