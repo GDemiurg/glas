@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="amber" gradientUnits="userSpaceOnUse"
+                    x1="0" y1="110" x2="0" y2="400">
+      <stop offset="0" stop-color="#fb4934"/>
+      <stop offset="1" stop-color="#b8bb26"/>
+    </linearGradient>
+    <linearGradient id="badge" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#23272f"/>
+      <stop offset="1" stop-color="#15181d"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="8" y="8" width="496" height="496" rx="112" fill="url(#badge)"/>
+  <rect x="8" y="8" width="496" height="496" rx="112" fill="none"
+        stroke="#fabd2f" stroke-opacity="0.12" stroke-width="4"/>
+
+  <!-- Letter G traced by vertical waveform bars -->
+  <g stroke="url(#amber)" stroke-width="24" stroke-linecap="round">
+    <!-- left flank of the ring -->
+    <line x1="123" y1="195" x2="123" y2="315"/>
+    <line x1="159" y1="146" x2="159" y2="364"/>
+    <!-- ring split into top/bottom arcs -->
+    <line x1="195" y1="123" x2="195" y2="195"/>
+    <line x1="195" y1="315" x2="195" y2="387"/>
+    <line x1="231" y1="112" x2="231" y2="173"/>
+    <line x1="231" y1="337" x2="231" y2="398"/>
+    <line x1="267" y1="110" x2="267" y2="171"/>
+    <line x1="267" y1="339" x2="267" y2="400"/>
+    <line x1="303" y1="118" x2="303" y2="185"/>
+    <line x1="303" y1="325" x2="303" y2="392"/>
+    <!-- crossbar start (mid pulse) -->
+    <line x1="303" y1="245" x2="303" y2="295"/>
+    <!-- right side: crossbar merging into the bottom arc; open above -->
+    <line x1="339" y1="240" x2="339" y2="373"/>
+    <line x1="375" y1="240" x2="375" y2="336"/>
+  </g>
+</svg>

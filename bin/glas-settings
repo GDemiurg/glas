@@ -1,0 +1,11 @@
+#!/bin/bash
+# Launch the Glas settings GUI using the project's venv python.
+
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
+ROOT="$(dirname "$SCRIPT_DIR")"
+
+PY="$ROOT/.venv/bin/python"
+[ -x "$PY" ] || PY="$(command -v python3)"
+
+export PYTHONPATH="$ROOT/lib:$PYTHONPATH"
+exec "$PY" -m glas_settings "$@"

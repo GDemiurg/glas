@@ -97,6 +97,7 @@ class ConfigManager:
             'llm_cleanup_timeout': 8.0,   # seconds; on timeout raw text is used
             'llm_cleanup_keep_alive': '30m',  # keep model hot in Ollama between dictations
             'llm_cleanup_prompt': None,   # null = built-in instruction (see llm_cleanup.py)
+            'llm_cleanup_temperature': 0.0,  # Ollama sampling temperature (0 = deterministic)
             # Mic-OSD overlay appearance (read by MicOSDRunner at spawn;
             # changes need a daemon restart)
             'mic_osd_style': 'wave',      # 'wave' | 'waveform' | 'vu_meter'

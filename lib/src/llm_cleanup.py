@@ -62,6 +62,10 @@ class LLMCleanup:
     def instruction(self) -> str:
         return str(self._get('llm_cleanup_prompt', DEFAULT_PROMPT))
 
+    @property
+    def temperature(self) -> float:
+        return float(self._get('llm_cleanup_temperature', 0.0))
+
     # ------------------------ Warm-up ------------------------
 
     def warm(self):
@@ -143,7 +147,7 @@ class LLMCleanup:
             'prompt': prompt,
             'stream': False,
             'keep_alive': self.keep_alive,
-            'options': {'temperature': 0, 'num_predict': num_predict},
+            'options': {'temperature': self.temperature, 'num_predict': num_predict},
         }).encode('utf-8')
         req = urllib.request.Request(
             f'{self.base_url}/api/generate',
