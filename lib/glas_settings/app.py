@@ -114,6 +114,11 @@ class GlasWindow(Adw.PreferencesWindow):
         self.set_search_enabled(True)
         self.cfg = ConfigStore()
 
+        # self-heal: match the launcher/tray glyph to the saved theme on
+        # every settings launch (icon cache may have gone stale otherwise).
+        system.render_themed_icon(
+            self.cfg.get('app_icon_theme', system.DEFAULT_ICON_THEME))
+
         self._restart_banner_added = False
         self._build_general()
         self._build_stt()
@@ -526,10 +531,22 @@ class GlasWindow(Adw.PreferencesWindow):
 
     def _build_icon(self):
         page = Adw.PreferencesPage(title='Icon', icon_name='applications-graphics-symbolic')
+
+        theme_grp = Adw.PreferencesGroup(
+            title='Theme (auto-tint)',
+            description='Recolors the waveform-G glyph to the theme accent and '
+                        'refreshes the icon cache — applied instantly.')
+        themes = list(system.ICON_THEMES.keys())
+        theme_grp.add(_combo_row(
+            'Accent theme', themes,
+            self.cfg.get('app_icon_theme', system.DEFAULT_ICON_THEME),
+            self._on_icon_theme))
+        page.add(theme_grp)
+
         grp = Adw.PreferencesGroup(
-            title='App / tray icon',
-            description='Applies to the launcher and tray. May need a relogin '
-                        'or icon-cache refresh to show everywhere.')
+            title='Manual override',
+            description='Pick a shipped variant or your own SVG instead. May '
+                        'need a relogin or icon-cache refresh to show everywhere.')
         for name, path in system.list_bundled_icons():
             row = Adw.ActionRow(title=name.replace('-', ' ').title())
             img = Gtk.Image.new_from_file(str(path))
@@ -547,6 +564,13 @@ class GlasWindow(Adw.PreferencesWindow):
         grp.add(custom)
         page.add(grp)
         self.add(page)
+
+    def _on_icon_theme(self, name):
+        ok = system.render_themed_icon(name)
+        if ok:
+            self.cfg.set('app_icon_theme', name)
+        self.add_toast(Adw.Toast(
+            title=f'Icon → {name}' if ok else 'Icon retint FAILED', timeout=3))
 
     def _on_icon_pick(self, _btn, path):
         ok = system.install_icon(path)

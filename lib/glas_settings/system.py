@@ -106,6 +106,59 @@ def install_icon(path) -> bool:
         return False
 
 
+# ------------------------ Themed app icon ------------------------
+
+# Accent per theme — mirrors DemiCrm's presets so the two apps share a
+# palette. Add a row here and it appears in the settings theme dropdown.
+ICON_THEMES = {
+    'gruvbox':        '#fb4934',   # red — default
+    'gruvbox-yellow': '#fabd2f',
+    'nord':           '#88c0d0',
+    'minimal-dark':   '#6c8ee0',
+    'cream':          '#e6d8b8',
+}
+DEFAULT_ICON_THEME = 'gruvbox'
+
+# Waveform-G traced in a single flat accent on a transparent canvas
+# (DemiCrm line-glyph family). {accent} is filled at render time.
+ICON_TEMPLATE = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Glas — waveform-G, tinted to the active theme's accent. -->
+  <g fill="none" stroke="{accent}" stroke-width="26" stroke-linecap="round">
+    <line x1="123" y1="195" x2="123" y2="315"/>
+    <line x1="159" y1="146" x2="159" y2="364"/>
+    <line x1="195" y1="123" x2="195" y2="195"/>
+    <line x1="195" y1="315" x2="195" y2="387"/>
+    <line x1="231" y1="112" x2="231" y2="173"/>
+    <line x1="231" y1="337" x2="231" y2="398"/>
+    <line x1="267" y1="110" x2="267" y2="171"/>
+    <line x1="267" y1="339" x2="267" y2="400"/>
+    <line x1="303" y1="118" x2="303" y2="185"/>
+    <line x1="303" y1="325" x2="303" y2="392"/>
+    <line x1="303" y1="245" x2="303" y2="295"/>
+    <line x1="339" y1="240" x2="339" y2="373"/>
+    <line x1="375" y1="240" x2="375" y2="336"/>
+  </g>
+</svg>
+"""
+
+
+def render_themed_icon(theme: str) -> bool:
+    """Write the app/tray glyph tinted to THEME's accent, refresh the icon
+    cache. Unknown theme -> gruvbox default. Never raises — the launcher
+    keeps the last-installed icon when this returns False."""
+    try:
+        accent = ICON_THEMES.get(theme, ICON_THEMES[DEFAULT_ICON_THEME])
+        INSTALLED_ICON.parent.mkdir(parents=True, exist_ok=True)
+        INSTALLED_ICON.write_text(ICON_TEMPLATE.format(accent=accent),
+                                  encoding='utf-8')
+        subprocess.run(['gtk4-update-icon-cache', '-q',
+                        str(Path.home() / '.local/share/icons/hicolor')],
+                       capture_output=True)
+        return True
+    except Exception:
+        return False
+
+
 # ------------------------ Test dictation ------------------------
 
 def fifo_command(cmd: str) -> bool:

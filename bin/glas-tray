@@ -26,6 +26,25 @@ CONFIG = Path.home() / '.config/hyprwhspr/config.json'
 SERVICE = 'hyprwhspr.service'
 LOCK = Path(os.environ.get('XDG_RUNTIME_DIR', '/tmp')) / 'glas-tray.pid'
 
+sys.path.insert(0, str(ROOT / 'lib'))
+try:
+    from glas_settings import system as _system
+except Exception:
+    _system = None
+
+
+def _retint_icon():
+    """Match the launcher/tray glyph to the saved theme before the indicator
+    loads it by name. No-op if the settings helper can't be imported."""
+    if _system is None:
+        return
+    try:
+        theme = json.loads(CONFIG.read_text()).get(
+            'app_icon_theme', _system.DEFAULT_ICON_THEME)
+    except Exception:
+        theme = _system.DEFAULT_ICON_THEME
+    _system.render_themed_icon(theme)
+
 
 def daemon_active() -> bool:
     r = subprocess.run(['systemctl', '--user', 'is-active', SERVICE],
@@ -42,6 +61,7 @@ def cleanup_enabled() -> bool:
 
 class Tray:
     def __init__(self):
+        _retint_icon()
         self.ind = AppIndicator.Indicator.new(
             'glas', 'glas', AppIndicator.IndicatorCategory.APPLICATION_STATUS)
         self.ind.set_status(AppIndicator.IndicatorStatus.ACTIVE)
