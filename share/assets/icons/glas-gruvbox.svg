@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <!-- Glas — gruvbox preset (default). Waveform-G traced in flat accent,
-       no badge, transparent background (DemiCrm line-glyph family). -->
+  <!-- Glas — gruvbox preset. Waveform-G traced in flat accent, no badge,
+       transparent background (DemiCrm line-glyph family). -->
   <g fill="none" stroke="#fb4934" stroke-width="26" stroke-linecap="round">
     <!-- left flank of the ring -->
     <line x1="123" y1="195" x2="123" y2="315"/>
